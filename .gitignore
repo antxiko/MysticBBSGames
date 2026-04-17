@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+
+# Scores locales (generados por cada jugador)
+*_scores.txt
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Mystic (por si acaso alguien prueba y se le queda algun log)
+*.log
+mystic_bbs.py
+
+# No subir script de referencia con secretos
+fhunter.py
