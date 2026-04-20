@@ -1,88 +1,108 @@
 # Maze BBS
 
-Roguelike turn-based de un jugador para Mystic BBS. Mazmorra procedural, descender niveles, matar bichos, coger loot, morir con estilo.
+Roguelike turn-based de un jugador para Mystic BBS. Mazmorra procedural con descenso hasta el nivel del Dragon, amuleto de victoria, inventario, scrolls y trampas.
 
 ## Alcance
 
 - Un solo `maze.py`. Solo stdlib.
-- Char-mode via `termios` (como snake/buscaminas).
-- **Shadow buffer** para no saturar el modem — solo se emiten las celdas que cambian.
+- Char-mode via `termios`.
+- Shadow buffer para no saturar el modem.
 - Top 10 persistente en `maze_scores.txt`.
 
-## UI
+## UI 80x24
 
-80x24, con:
-- Cabecera con nivel de mazmorra
-- Mapa 76x16
-- Barra de stats
-- Linea de log (ultimo mensaje)
-- Linea de controles
-- Pie
+- Cabecera con nivel de mazmorra (`[BOSS]` en rojo al llegar al nivel 10).
+- Mapa 76x16.
+- Barra de stats con HP coloreado, inventario y flag de `[AMULETO]`.
+- Linea de log con el ultimo mensaje.
+- Linea de controles.
 
 ## Tiles
 
-| Char | Que es      |
-|------|-------------|
-| `@`  | Tu          |
-| `r`  | Rata        |
-| `g`  | Goblin      |
-| `o`  | Orco        |
-| `T`  | Troll       |
-| `#`  | Muro        |
-| `.`  | Suelo       |
-| `>`  | Escaleras abajo |
-| `$`  | Oro         |
-| `!`  | Pocion (cura)|
-| `/`  | Arma (+ATK) |
-| `[`  | Armadura (+DEF) |
+| Char | Que es            |
+|------|-------------------|
+| `@`  | Tu (verde normal / ambar si llevas el amuleto) |
+| `r`  | Rata              |
+| `g`  | Goblin            |
+| `s`  | Esqueleto         |
+| `G`  | Hobgoblin         |
+| `o`  | Orco              |
+| `T`  | Troll             |
+| `O`  | Ogro              |
+| `D`  | Dragon (boss)     |
+| `#`  | Muro              |
+| `.`  | Suelo             |
+| `>`  | Escaleras         |
+| `$`  | Oro               |
+| `!`  | Pocion            |
+| `/`  | Arma (+ATK)       |
+| `[`  | Armadura (+DEF)   |
+| `?`  | Scroll            |
+| `&`  | Amuleto de Yendor |
+| `^`  | Trampa (descubierta) |
 
-## Controles
+## Enemigos
 
-- `W A S D` o flechas: mover. Si avanzas hacia un enemigo, le atacas.
-- `.` o `espacio`: esperar un turno.
-- `>`: bajar escaleras si estas en ellas.
-- `Q`: salir.
+| Tipo      | HP  | ATK | DEF | XP  | Oro       |
+|-----------|-----|-----|-----|-----|-----------|
+| Rata      | 3   | 1   | 0   | 5   | 1-5       |
+| Goblin    | 6   | 2   | 1   | 10  | 3-10      |
+| Esqueleto | 10  | 3   | 2   | 18  | 5-12      |
+| Hobgoblin | 15  | 3   | 1   | 20  | 8-18      |
+| Orco      | 12  | 4   | 2   | 25  | 10-25     |
+| Troll     | 25  | 6   | 3   | 50  | 25-60     |
+| Ogro      | 35  | 8   | 4   | 80  | 40-80     |
+| Dragon    | 150 | 15  | 8   | 500 | 200-500   |
+
+Los enemigos escalan por nivel (+1 ATK/+1 DEF/+2 HP cada 2 niveles).
+
+## Items y inventario
+
+- `$` Oro: 5-30 al pisarlo (auto).
+- `/` Arma: +1 ATK permanente (auto).
+- `[` Armadura: +1 DEF permanente (auto).
+- `!` Pocion: va al inventario.
+- `?` Scroll: va al inventario. 3 tipos:
+  - **Scroll de fuego**: 15 dano a todos enemigos adyacentes.
+  - **Scroll de teletransporte**: te mueve a una casilla aleatoria.
+  - **Scroll de mapeo**: revela el mapa completo del nivel.
+- `&` Amuleto de Yendor: va al inventario; solo aparece en el nivel 10.
+
+Max inventario: 10 items.
+
+## Trampas
+
+Ocultas en el suelo (invisibles hasta que las pisas). Dos tipos:
+- **Pinchos**: 3-8 dano.
+- **Teletransporte**: te tira a otra casilla.
+
+Al descubrirlas aparecen como `^` coloreado.
+
+## Mazmorra
+
+- Grid 76x16. 6-10 habitaciones conectadas con pasillos en L.
+- Niveles 1-9: escaleras `>` para bajar al siguiente nivel.
+- Nivel 10 (Boss): spawn del Dragon + amuleto, sin escaleras hacia abajo.
+- Tras conseguir el amuleto, las escaleras suben (`<`): cada uso te sube un nivel. Llegar al nivel 0 = victoria.
 
 ## Mecanica
 
-### Stats
-
-Jugador empieza con HP 20/20, ATK 3, DEF 1. Sube nivel cada `50 * nivel_actual` XP: +5 HP max, +1 ATK, +1 DEF cada dos niveles, cura completa.
-
 ### Combate
+Dano = max(1, atk_atacante - def_defensor). Bump-to-attack: mueves hacia enemigo = atacas.
 
-Dano = `max(1, atk_atacante - def_defensor)`. No hay RNG de hit/miss: golpeas, haces dano. Tu pegas al moverte contra enemigo (bump). Enemigos pegan en su turno si estan adyacentes.
+### Nivel del jugador
+Sube cada `50 * nivel_actual` XP: +5 HP max, +1 ATK, +1 DEF cada dos niveles, HP restaurado al maximo.
 
-### Enemigos
+### Victoria
+Matar al Dragon, coger el Amuleto, volver a la superficie (nivel 0). Bonus +1000 puntos.
 
-| Tipo   | HP | ATK | DEF | XP | Oro    |
-|--------|----|----|-----|-----|--------|
-| Rata   | 3  | 1  | 0   | 5   | 1-5    |
-| Goblin | 6  | 2  | 1   | 10  | 3-10   |
-| Orco   | 12 | 4  | 2   | 25  | 10-25  |
-| Troll  | 25 | 6  | 3   | 50  | 25-60  |
+### Puntuacion final
+`oro + xp * 2 + 1000 si victoria`.
 
-### Escalado por nivel
+## Controles
 
-- Nivel 1: ratas, algun goblin.
-- Nivel 2-3: goblins, algun orco.
-- Nivel 4+: orcos, trolls. Cada +2 niveles suma +1 ATK/+1 DEF a cada enemigo.
-
-### Items
-
-- `$` Oro: 5-30 al pisarlo.
-- `!` Pocion: cura 10 HP al pisarla.
-- `/` Arma: +1 ATK permanente.
-- `[` Armadura: +1 DEF permanente.
-
-## Generacion de mazmorra
-
-- Grid 76x16.
-- Placeholder: 6-10 habitaciones rectangulares sin solapar.
-- Conecto habitaciones con pasillos en L.
-- Jugador en la primera habitacion, escaleras `>` en la ultima.
-- Enemigos e items distribuidos en las demas.
-
-## Fin de partida
-
-Cuando HP <= 0. Puntuacion final = `oro + xp * 2`. Top 10 persistente con iniciales de 3 letras.
+- `W A S D` o flechas: mover (bump a enemigo = atacar).
+- `.` / `espacio`: esperar un turno.
+- `>` / `<`: usar escaleras (baja sin amuleto, sube con amuleto).
+- `i`: abrir inventario. Dentro, `1-9` para usar item, `ESC`/`Q` para cerrar.
+- `Q`: salir de la partida.

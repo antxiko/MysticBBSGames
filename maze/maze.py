@@ -176,32 +176,60 @@ def leer_tecla():
 # ---------- datos enemigos e items ----------
 
 TIPOS_ENEMIGO = {
-    "rata":   {"ch": "r", "hp": 3,  "atk": 1, "def": 0, "xp": 5,  "oro": (1, 5),   "col": "amar"},
-    "goblin": {"ch": "g", "hp": 6,  "atk": 2, "def": 1, "xp": 10, "oro": (3, 10),  "col": "verde"},
-    "orco":   {"ch": "o", "hp": 12, "atk": 4, "def": 2, "xp": 25, "oro": (10, 25), "col": "rojo"},
-    "troll":  {"ch": "T", "hp": 25, "atk": 6, "def": 3, "xp": 50, "oro": (25, 60), "col": "rojoB"},
+    "rata":      {"ch": "r", "hp": 3,   "atk": 1,  "def": 0, "xp": 5,   "oro": (1, 5),     "col": "amar"},
+    "goblin":    {"ch": "g", "hp": 6,   "atk": 2,  "def": 1, "xp": 10,  "oro": (3, 10),    "col": "verde"},
+    "esqueleto": {"ch": "s", "hp": 10,  "atk": 3,  "def": 2, "xp": 18,  "oro": (5, 12),    "col": "blancoB"},
+    "hobgoblin": {"ch": "G", "hp": 15,  "atk": 3,  "def": 1, "xp": 20,  "oro": (8, 18),    "col": "verdeB"},
+    "orco":      {"ch": "o", "hp": 12,  "atk": 4,  "def": 2, "xp": 25,  "oro": (10, 25),   "col": "rojo"},
+    "troll":     {"ch": "T", "hp": 25,  "atk": 6,  "def": 3, "xp": 50,  "oro": (25, 60),   "col": "rojoB"},
+    "ogro":      {"ch": "O", "hp": 35,  "atk": 8,  "def": 4, "xp": 80,  "oro": (40, 80),   "col": "magentaB"},
+    "dragon":    {"ch": "D", "hp": 150, "atk": 15, "def": 8, "xp": 500, "oro": (200, 500), "col": "rojoB"},
 }
 
 TIPOS_ITEM = {
-    "oro":       {"ch": "$", "col": "amarB"},
-    "pocion":    {"ch": "!", "col": "rojoB"},
-    "arma":      {"ch": "/", "col": "cyanB"},
-    "armadura":  {"ch": "[", "col": "magentaB"},
+    "oro":          {"ch": "$", "col": "amarB"},
+    "pocion":       {"ch": "!", "col": "rojoB"},
+    "arma":         {"ch": "/", "col": "cyanB"},
+    "armadura":     {"ch": "[", "col": "magentaB"},
+    "scroll_fuego": {"ch": "?", "col": "rojoB"},
+    "scroll_tp":    {"ch": "?", "col": "magentaB"},
+    "scroll_mapa":  {"ch": "?", "col": "amarB"},
+    "amuleto":      {"ch": "&", "col": "amarB"},
 }
+
+# Items que van al inventario en vez de auto-usarse
+ITEMS_INVENTARIO = {"pocion", "scroll_fuego", "scroll_tp", "scroll_mapa", "amuleto"}
+MAX_INVENTARIO = 10
+
+TIPOS_TRAMPA = {
+    "pinchos":  {"ch": "^", "col": "rojoB", "descripcion": "Pinchos", "dano": (3, 8)},
+    "tp_trampa": {"ch": "^", "col": "cyanB", "descripcion": "Teletransporte", "dano": (0, 0)},
+}
+
+NIVEL_BOSS = 10  # en ese nivel aparece el dragon con el amuleto
 
 
 def tabla_spawn(nivel):
-    """Devuelve pesos (tipo, count) de enemigos para un nivel."""
+    """Devuelve (tipo, count) de enemigos. Nivel 10 = solo dragon (boss)."""
+    if nivel >= NIVEL_BOSS:
+        # solo el dragon + unos cuantos orcos guardianes
+        return [("orco", 2), ("troll", 1), ("dragon", 1)]
     if nivel == 1:
         return [("rata", 5), ("goblin", 2)]
     if nivel == 2:
-        return [("rata", 3), ("goblin", 4), ("orco", 1)]
+        return [("rata", 3), ("goblin", 4), ("esqueleto", 1)]
     if nivel == 3:
-        return [("goblin", 3), ("orco", 3), ("troll", 1)]
-    # nivel 4+
-    extra_orco = min(6, nivel - 2)
-    extra_troll = (nivel - 3) // 2
-    return [("goblin", 2), ("orco", extra_orco), ("troll", max(1, extra_troll))]
+        return [("goblin", 3), ("esqueleto", 2), ("hobgoblin", 1)]
+    if nivel == 4:
+        return [("esqueleto", 2), ("hobgoblin", 2), ("orco", 2)]
+    if nivel == 5:
+        return [("hobgoblin", 2), ("orco", 3), ("troll", 1)]
+    if nivel == 6:
+        return [("orco", 3), ("troll", 2), ("ogro", 1)]
+    if nivel == 7:
+        return [("orco", 2), ("troll", 2), ("ogro", 2)]
+    # niveles 8-9: muchos duros
+    return [("troll", 2), ("ogro", 2 + (nivel - 8))]
 
 
 def escalar_enemigo(base, nivel):
@@ -304,7 +332,8 @@ def generar_mazmorra(nivel):
                 break
 
     items = []
-    # items: siempre 1 pocion, 1-2 oro, 30% arma, 30% armadura
+    trampas = []
+
     def spawn_item(tipo):
         for _intento in range(20):
             room = random.choice(rooms)
@@ -315,20 +344,52 @@ def generar_mazmorra(nivel):
             ocupadas.add((ix, iy))
             break
 
+    def spawn_trampa(tipo):
+        for _intento in range(20):
+            room = random.choice(rooms)
+            tx, ty = celda_aleatoria_en(room)
+            if (tx, ty) in ocupadas or mapa[ty][tx] != TILE_FLOOR:
+                continue
+            trampas.append({"x": tx, "y": ty, "tipo": tipo, "descubierta": False})
+            ocupadas.add((tx, ty))
+            break
+
+    # Items por nivel
     spawn_item("pocion")
+    if nivel >= 3:
+        spawn_item("pocion")  # 2 pociones en niveles avanzados
     for _ in range(random.randint(1, 3)):
         spawn_item("oro")
     if random.random() < 0.35:
         spawn_item("arma")
     if random.random() < 0.35:
         spawn_item("armadura")
+    # scrolls
+    if random.random() < 0.30:
+        spawn_item(random.choice(["scroll_fuego", "scroll_tp", "scroll_mapa"]))
+    if nivel >= 4 and random.random() < 0.25:
+        spawn_item(random.choice(["scroll_fuego", "scroll_tp", "scroll_mapa"]))
+
+    # Amuleto: se coloca en el nivel del boss
+    if nivel == NIVEL_BOSS:
+        spawn_item("amuleto")
+
+    # Trampas: probabilidad creciente con el nivel
+    n_trampas = max(0, min(6, nivel // 2 + random.randint(0, 1)))
+    for _ in range(n_trampas):
+        spawn_trampa(random.choice(list(TIPOS_TRAMPA.keys())))
+
+    # Escaleras: ninguna en el nivel boss (tienes que matar al dragon + volver)
+    # En niveles normales hay escaleras abajo
+    stairs = (escx, escy) if nivel < NIVEL_BOSS else None
 
     return {
         "mapa": mapa,
         "rooms": rooms,
         "enemigos": enemigos,
         "items": items,
-        "stairs": (escx, escy),
+        "trampas": trampas,
+        "stairs": stairs,
         "player_start": (pjx, pjy),
     }
 
@@ -342,6 +403,8 @@ def nuevo_jugador():
         "atk": 3, "def": 1,
         "xp": 0, "nivel": 1,
         "oro": 0,
+        "inventario": [],  # lista de strings de tipos de item
+        "amuleto": False,
     }
 
 
@@ -367,10 +430,11 @@ def render(estado, log, nivel_mazmorra):
     frame = frame_nuevo()
 
     # cabecera
-    titulo = f" MAZE BBS   Mazmorra nivel {nivel_mazmorra} "
+    es_boss = nivel_mazmorra >= NIVEL_BOSS
+    titulo = f" MAZE BBS   Mazmorra nivel {nivel_mazmorra}{'  [BOSS]' if es_boss else ''} "
     pad_l = (COLS - len(titulo)) // 2
     set_text(frame, ROW_TITLE, 0, "\u2550" * pad_l, "blancoB")
-    set_text(frame, ROW_TITLE, pad_l, titulo, "amarB", "bold")
+    set_text(frame, ROW_TITLE, pad_l, titulo, "rojoB" if es_boss else "amarB", "bold")
     set_text(frame, ROW_TITLE, pad_l + len(titulo), "\u2550" * (COLS - pad_l - len(titulo)), "blancoB")
 
     # separador
@@ -385,9 +449,16 @@ def render(estado, log, nivel_mazmorra):
             else:
                 set_cell(frame, MAP_Y0 + y, MAP_X0 + x, ".", "dim")
 
-    # escaleras
-    esx, esy = estado["stairs"]
-    set_cell(frame, MAP_Y0 + esy, MAP_X0 + esx, ">", "amarB", "bold")
+    # trampas descubiertas
+    for t in estado.get("trampas", []):
+        if t["descubierta"]:
+            td = TIPOS_TRAMPA[t["tipo"]]
+            set_cell(frame, MAP_Y0 + t["y"], MAP_X0 + t["x"], td["ch"], td["col"], "bold")
+
+    # escaleras (si existen en este nivel)
+    if estado.get("stairs"):
+        esx, esy = estado["stairs"]
+        set_cell(frame, MAP_Y0 + esy, MAP_X0 + esx, ">", "amarB", "bold")
 
     # items
     for it in estado["items"]:
@@ -400,24 +471,27 @@ def render(estado, log, nivel_mazmorra):
 
     # player
     p = estado["player"]
-    set_cell(frame, MAP_Y0 + p["y"], MAP_X0 + p["x"], "@", "verdeB", "bold")
+    col_player = "amarB" if p.get("amuleto") else "verdeB"
+    set_cell(frame, MAP_Y0 + p["y"], MAP_X0 + p["x"], "@", col_player, "bold")
 
     # separador stats
     set_text(frame, ROW_SEP2, 0, "\u2500" * COLS, "dim")
 
     # stats
     hp_col = "verdeB" if p["hp"] > p["hp_max"] * 0.6 else ("amarB" if p["hp"] > p["hp_max"] * 0.3 else "rojoB")
+    amu = "  [AMULETO]" if p.get("amuleto") else ""
     stats = (
         f" HP: {p['hp']}/{p['hp_max']}  ATK: {p['atk']}  DEF: {p['def']}  "
-        f"XP: {p['xp']}/{xp_para_subir(p['nivel'])}  Lvl: {p['nivel']}  Oro: {p['oro']}"
+        f"XP: {p['xp']}/{xp_para_subir(p['nivel'])}  Lvl: {p['nivel']}  Oro: {p['oro']}  Inv: {len(p['inventario'])}/{MAX_INVENTARIO}{amu}"
     )
     set_text(frame, ROW_STATS, 0, stats, "blanco")
-    # recolorear HP
     hp_str = f"{p['hp']}/{p['hp_max']}"
     set_text(frame, ROW_STATS, 5, hp_str, hp_col, "bold")
-    # recolorear oro
     oro_col_x = stats.index("Oro:") + 5
     set_text(frame, ROW_STATS, oro_col_x, str(p['oro']), "amarB", "bold")
+    if amu:
+        amu_x = stats.index("[AMULETO]")
+        set_text(frame, ROW_STATS, amu_x, "[AMULETO]", "amarB", "bold")
 
     # separador log
     set_text(frame, ROW_SEP3, 0, "\u2500" * COLS, "dim")
@@ -431,9 +505,47 @@ def render(estado, log, nivel_mazmorra):
     set_text(frame, ROW_SEP4, 0, "\u2500" * COLS, "dim")
 
     # controles
-    ctrl = " WASD/flechas mover (bump=atacar)  .  esperar  >  bajar escaleras  Q  salir "
+    ctrl = " WASD mover    .  esperar    > escaleras    i inventario    Q  salir "
     set_text(frame, ROW_CTRL, (COLS - len(ctrl)) // 2, ctrl, "dim")
 
+    flush_frame(frame)
+
+
+# Descripciones para la pantalla de inventario
+DESC_ITEM = {
+    "pocion":       "Cura 10 HP",
+    "scroll_fuego": "Dano 15 a enemigos adyacentes",
+    "scroll_tp":    "Teletransporte aleatorio",
+    "scroll_mapa":  "Revela todo el mapa",
+    "amuleto":      "Llevalo al nivel 1 para ganar",
+}
+
+
+def render_inventario(estado):
+    frame = frame_nuevo()
+    titulo = " INVENTARIO "
+    pad_l = (COLS - len(titulo)) // 2
+    set_text(frame, 0, 0, "\u2550" * pad_l, "blancoB")
+    set_text(frame, 0, pad_l, titulo, "amarB", "bold")
+    set_text(frame, 0, pad_l + len(titulo), "\u2550" * (COLS - pad_l - len(titulo)), "blancoB")
+
+    p = estado["player"]
+    set_text(frame, 2, 2, f"Objetos ({len(p['inventario'])}/{MAX_INVENTARIO}):", "cyanB", "bold")
+
+    y = 4
+    if not p["inventario"]:
+        set_text(frame, y, 4, "(inventario vacio)", "dim")
+    else:
+        for i, tipo in enumerate(p["inventario"]):
+            if i >= 9:
+                break
+            nombre = NOMBRES_ITEM.get(tipo, tipo)
+            desc = DESC_ITEM.get(tipo, "")
+            set_text(frame, y, 4, f"{i+1}) {nombre}", "verdeB", "bold")
+            set_text(frame, y, 30, desc, "blanco")
+            y += 1
+
+    set_text(frame, 22, (COLS - 36) // 2, " 1-9 usar    ESC/I/Q volver ", "dim")
     flush_frame(frame)
 
 
@@ -481,6 +593,15 @@ def atacar_enemigo_a_jugador(estado, enemigo, log):
     log.append(f"El {enemigo['tipo']} te ataca: -{dano} HP.")
 
 
+NOMBRES_ITEM = {
+    "pocion":       "Pocion",
+    "scroll_fuego": "Scroll de fuego",
+    "scroll_tp":    "Scroll de teletransporte",
+    "scroll_mapa":  "Scroll de mapeo",
+    "amuleto":      "Amuleto de Yendor",
+}
+
+
 def recoger_item(estado, it, log):
     p = estado["player"]
     tipo = it["tipo"]
@@ -488,17 +609,105 @@ def recoger_item(estado, it, log):
         ganado = random.randint(5, 30)
         p["oro"] += ganado
         log.append(f"Coges {ganado} de oro.")
-    elif tipo == "pocion":
-        cura = 10
-        p["hp"] = min(p["hp_max"], p["hp"] + cura)
-        log.append(f"Bebes una pocion. +{cura} HP.")
     elif tipo == "arma":
         p["atk"] += 1
         log.append(f"Nueva arma! +1 ATK (ahora {p['atk']}).")
     elif tipo == "armadura":
         p["def"] += 1
         log.append(f"Nueva armadura! +1 DEF (ahora {p['def']}).")
+    elif tipo == "amuleto":
+        p["amuleto"] = True
+        p["inventario"].append(tipo)
+        log.append("¡Coges el AMULETO DE YENDOR! Vuelve a la superficie.")
+    elif tipo in ITEMS_INVENTARIO:
+        if len(p["inventario"]) >= MAX_INVENTARIO:
+            log.append(f"Tu bolsa esta llena. Dejas el {NOMBRES_ITEM.get(tipo, tipo)}.")
+            return
+        p["inventario"].append(tipo)
+        log.append(f"Guardas {NOMBRES_ITEM.get(tipo, tipo)}. (inv: {len(p['inventario'])}/{MAX_INVENTARIO})")
     estado["items"].remove(it)
+
+
+def usar_item(estado, idx, log):
+    """Usa el item del inventario en indice idx. Devuelve True si se uso."""
+    p = estado["player"]
+    if idx < 0 or idx >= len(p["inventario"]):
+        return False
+    tipo = p["inventario"][idx]
+    if tipo == "pocion":
+        cura = 10
+        p["hp"] = min(p["hp_max"], p["hp"] + cura)
+        log.append(f"Bebes una pocion. +{cura} HP.")
+        p["inventario"].pop(idx)
+        return True
+    if tipo == "scroll_fuego":
+        # dano a todos enemigos adyacentes
+        dano = 15
+        victimas = []
+        for e in list(estado["enemigos"]):
+            if adyacente(e["x"], e["y"], p["x"], p["y"]):
+                e["hp"] -= dano
+                victimas.append(e["tipo"])
+                if e["hp"] <= 0:
+                    lo, hi = TIPOS_ENEMIGO[e["tipo"]]["oro"]
+                    p["xp"] += e["xp"]
+                    p["oro"] += random.randint(lo, hi)
+                    estado["enemigos"].remove(e)
+        if victimas:
+            log.append(f"Lanzas bola de fuego: {dano} dano a {len(victimas)} enemigos.")
+            subir_nivel_si(p, log)
+        else:
+            log.append("Lanzas bola de fuego, pero no hay nadie alrededor.")
+        p["inventario"].pop(idx)
+        return True
+    if tipo == "scroll_tp":
+        # teletransporte a casilla de suelo aleatoria segura
+        candidatas = []
+        for y in range(MAP_H):
+            for x in range(MAP_W):
+                if estado["mapa"][y][x] == TILE_FLOOR and not enemigo_en(estado, x, y) and (x, y) != (p["x"], p["y"]):
+                    candidatas.append((x, y))
+        if candidatas:
+            p["x"], p["y"] = random.choice(candidatas)
+            log.append("Desapareces en una nube de humo. Apareces en otro lugar.")
+        p["inventario"].pop(idx)
+        return True
+    if tipo == "scroll_mapa":
+        estado["mapa_revelado"] = True
+        log.append("El mapa del nivel se te revela.")
+        p["inventario"].pop(idx)
+        return True
+    if tipo == "amuleto":
+        log.append("El amuleto resplandece. No lo puedes 'usar'; llevalo a la salida.")
+        return False
+    return False
+
+
+def trampa_en(estado, x, y):
+    for t in estado.get("trampas", []):
+        if t["x"] == x and t["y"] == y:
+            return t
+    return None
+
+
+def pisar_trampa(estado, trampa, log):
+    p = estado["player"]
+    trampa["descubierta"] = True
+    tipo = trampa["tipo"]
+    if tipo == "pinchos":
+        lo, hi = TIPOS_TRAMPA[tipo]["dano"]
+        dano = random.randint(lo, hi)
+        p["hp"] -= dano
+        log.append(f"Pinchos te atraviesan el pie: -{dano} HP.")
+    elif tipo == "tp_trampa":
+        candidatas = []
+        for y in range(MAP_H):
+            for x in range(MAP_W):
+                if estado["mapa"][y][x] == TILE_FLOOR and not enemigo_en(estado, x, y) and (x, y) != (p["x"], p["y"]):
+                    candidatas.append((x, y))
+        if candidatas:
+            p["x"], p["y"] = random.choice(candidatas)
+            log.append("Pisas una losa y apareces en otro lado.")
 
 
 def mover_jugador(estado, dx, dy, log):
@@ -516,6 +725,9 @@ def mover_jugador(estado, dx, dy, log):
     it = item_en(estado, nx, ny)
     if it:
         recoger_item(estado, it, log)
+    tr = trampa_en(estado, p["x"], p["y"])
+    if tr:
+        pisar_trampa(estado, tr, log)
     return True
 
 
@@ -650,14 +862,16 @@ def splash():
         pass
 
 
-def pantalla_final(player, nivel_mazmorra):
+def pantalla_final(player, nivel_mazmorra, victoria):
     sys.stdout.write(show_cursor(True))
     print()
     ancho = 50
     margen = " " * ((COLS - (ancho + 2)) // 2)
     linea = "\u2550" * ancho
-    lado = c("\u2551", "rojoB")
-    puntos = player["oro"] + player["xp"] * 2
+    color_marco = "verdeB" if victoria else "rojoB"
+    lado = c("\u2551", color_marco)
+    bonus_victoria = 1000 if victoria else 0
+    puntos = player["oro"] + player["xp"] * 2 + bonus_victoria
 
     def fila_centrada(texto, *estilos):
         pad_total = ancho - len(texto)
@@ -671,19 +885,23 @@ def pantalla_final(player, nivel_mazmorra):
         pad = ancho - len(plano)
         return margen + lado + prefijo + c(val, col, "bold") + " " * pad + lado
 
-    print(margen + c("\u2554" + linea + "\u2557", "rojoB"))
-    print(fila_centrada("HAS MUERTO", "bold"))
-    print(margen + c("\u2560" + linea + "\u2563", "rojoB"))
-    print(fila_kv("Mazmorra nivel : ", str(nivel_mazmorra).rjust(20), "amarB"))
-    print(fila_kv("Nivel jugador  : ", str(player["nivel"]).rjust(20), "amarB"))
-    print(fila_kv("XP acumulado   : ", str(player["xp"]).rjust(20), "cyanB"))
-    print(fila_kv("Oro            : ", str(player["oro"]).rjust(20), "amarB"))
-    print(fila_kv("Puntuacion     : ", str(puntos).rjust(20), "verdeB"))
-    print(margen + c("\u255A" + linea + "\u255D", "rojoB"))
+    print(margen + c("\u2554" + linea + "\u2557", color_marco))
+    titulo = "¡VICTORIA! Escapaste con el Amuleto" if victoria else "HAS MUERTO"
+    print(fila_centrada(titulo, "bold"))
+    print(margen + c("\u2560" + linea + "\u2563", color_marco))
+    print(fila_kv("Nivel mas profundo : ", str(nivel_mazmorra).rjust(18), "amarB"))
+    print(fila_kv("Nivel jugador      : ", str(player["nivel"]).rjust(18), "amarB"))
+    print(fila_kv("XP acumulado       : ", str(player["xp"]).rjust(18), "cyanB"))
+    print(fila_kv("Oro                : ", str(player["oro"]).rjust(18), "amarB"))
+    if victoria:
+        print(fila_kv("Bonus victoria     : ", "1000".rjust(18), "verdeB"))
+    print(fila_kv("Puntuacion         : ", str(puntos).rjust(18), "verdeB"))
+    print(margen + c("\u255A" + linea + "\u255D", color_marco))
     print()
 
-    if es_top(puntos):
-        print(margen + c("  [ENTRAS EN EL TOP 10]", "amarB", "bold"))
+    if es_top(puntos) or victoria:
+        if es_top(puntos):
+            print(margen + c("  [ENTRAS EN EL TOP 10]", "amarB", "bold"))
         print()
         nombre = ""
         while not nombre:
@@ -711,23 +929,38 @@ def pantalla_final(player, nivel_mazmorra):
 
 # ---------- main ----------
 
+def abrir_inventario(estado, log):
+    """Pantalla modal de inventario. Devuelve True si se uso un item (consume turno)."""
+    while True:
+        render_inventario(estado)
+        tecla = leer_tecla()
+        if tecla in ("\x1b", "q", "Q", "i", "I"):
+            return False
+        if tecla in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
+            idx = int(tecla) - 1
+            if usar_item(estado, idx, log):
+                return True
+
+
 def jugar():
     player = nuevo_jugador()
     nivel_mazmorra = 1
     estado = generar_mazmorra(nivel_mazmorra)
     player["x"], player["y"] = estado["player_start"]
     estado["player"] = player
-    log = ["Bienvenido a la mazmorra."]
+    log = ["Bienvenido a la mazmorra. Busca el Amuleto de Yendor."]
 
     cls()
     sys.stdout.write(show_cursor(False))
     render(estado, log, nivel_mazmorra)
 
+    victoria = False
+
     while player["hp"] > 0:
         tecla = leer_tecla()
         dx, dy = 0, 0
         accion = False
-        bajar = False
+        usar_escaleras = False
         if tecla in ("w", "W", "\x1b[A"):
             dy = -1
         elif tecla in ("s", "S", "\x1b[B"):
@@ -738,20 +971,45 @@ def jugar():
             dx = 1
         elif tecla in (".", " "):
             accion = True
-        elif tecla in (">",):
-            bajar = True
+        elif tecla in (">", "<"):
+            usar_escaleras = True
+        elif tecla in ("i", "I"):
+            cls()  # reset shadow para la pantalla modal
+            uso = abrir_inventario(estado, log)
+            cls()  # reset al volver al juego
+            render(estado, log, nivel_mazmorra)
+            if uso:
+                accion = True
+                if player["hp"] > 0:
+                    turno_enemigos(estado, log)
+                render(estado, log, nivel_mazmorra)
+            continue
         elif tecla in ("q", "Q", "\x03"):
-            return player, nivel_mazmorra
+            return player, nivel_mazmorra, victoria
         else:
             continue
 
-        if bajar:
-            if (player["x"], player["y"]) == estado["stairs"]:
-                nivel_mazmorra += 1
-                estado = generar_mazmorra(nivel_mazmorra)
-                player["x"], player["y"] = estado["player_start"]
-                estado["player"] = player
-                log.append(f"Bajas al nivel {nivel_mazmorra} de la mazmorra.")
+        if usar_escaleras:
+            if estado.get("stairs") and (player["x"], player["y"]) == estado["stairs"]:
+                if player.get("amuleto"):
+                    # SUBIR hacia la salida
+                    nivel_mazmorra -= 1
+                    if nivel_mazmorra < 1:
+                        victoria = True
+                        log.append("¡Escapas a la superficie con el Amuleto! VICTORIA.")
+                        break
+                    estado = generar_mazmorra(nivel_mazmorra)
+                    player["x"], player["y"] = estado["player_start"]
+                    estado["player"] = player
+                    log.append(f"Subes al nivel {nivel_mazmorra}.")
+                else:
+                    # BAJAR al siguiente nivel
+                    nivel_mazmorra += 1
+                    estado = generar_mazmorra(nivel_mazmorra)
+                    player["x"], player["y"] = estado["player_start"]
+                    estado["player"] = player
+                    log.append(f"Bajas al nivel {nivel_mazmorra} de la mazmorra.")
+                cls()
                 render(estado, log, nivel_mazmorra)
                 continue
             else:
@@ -771,7 +1029,7 @@ def jugar():
                 turno_enemigos(estado, log)
         render(estado, log, nivel_mazmorra)
 
-    return player, nivel_mazmorra
+    return player, nivel_mazmorra, victoria
 
 
 def main():
@@ -787,12 +1045,12 @@ def main():
         splash()
         while True:
             old2 = entrar_cbreak()
-            player, nivel_mazmorra = jugar()
+            player, nivel_mazmorra, victoria = jugar()
             restaurar_terminal(old2)
             sys.stdout.write(show_cursor(True))
             sys.stdout.flush()
-            if player["hp"] <= 0:
-                pantalla_final(player, nivel_mazmorra)
+            if player["hp"] <= 0 or victoria:
+                pantalla_final(player, nivel_mazmorra, victoria)
             try:
                 raw = input("\n  Otra partida? [S/N]: ").strip().upper()
             except EOFError:

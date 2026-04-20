@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""BBSATRO - deckbuilder de poker estilo Balatro (fase 1, sin jokers).
+"""BBSATRO - deckbuilder de poker estilo Balatro.
 
+Incluye 20 jokers, tienda entre rondas, upgrade de manos automatico y
+boss blinds con efectos especiales en la ronda final de cada ante.
 Fichero: balatro.py. El juego se muestra como BBSATRO."""
 import os
 import random
@@ -72,6 +74,62 @@ PUNTOS_MANO = {
 
 VALOR_CARTA = {2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10,
                11: 10, 12: 10, 13: 10, 14: 11}
+
+# Bonus por nivel de cada tipo de mano: (chips_por_nivel, mult_por_nivel)
+NIVEL_HAND_BONUS = {
+    "carta_alta":     (10, 1),
+    "pareja":         (15, 1),
+    "doble_pareja":   (20, 1),
+    "trio":           (20, 2),
+    "escalera":       (30, 3),
+    "color":          (15, 2),
+    "full":           (25, 2),
+    "poker":          (30, 3),
+    "escalera_color": (40, 4),
+    "escalera_real":  (40, 4),
+}
+
+# Jokers: id -> (nombre, descripcion corta, precio, clave de efecto)
+JOKERS = {
+    "joker":        {"nombre": "Joker",        "desc": "+4 Mult",                         "precio": 2, "efecto": "mult_plano_4"},
+    "jolly":        {"nombre": "Jolly",        "desc": "+8 Mult si pareja",               "precio": 3, "efecto": "mult_si_pareja_8"},
+    "zany":         {"nombre": "Zany",         "desc": "+12 Mult si trio",                "precio": 4, "efecto": "mult_si_trio_12"},
+    "mad":          {"nombre": "Mad",          "desc": "+10 Mult si doble pareja",        "precio": 4, "efecto": "mult_si_doble_10"},
+    "crazy":        {"nombre": "Crazy",        "desc": "+12 Mult si escalera",            "precio": 4, "efecto": "mult_si_escalera_12"},
+    "droll":        {"nombre": "Droll",        "desc": "+10 Mult si color",               "precio": 4, "efecto": "mult_si_color_10"},
+    "greedy":       {"nombre": "Greedy",       "desc": "+3 Mult por diamante",            "precio": 5, "efecto": "mult_por_diamante_3"},
+    "lusty":        {"nombre": "Lusty",        "desc": "+3 Mult por corazon",             "precio": 5, "efecto": "mult_por_corazon_3"},
+    "wrathful":     {"nombre": "Wrathful",     "desc": "+3 Mult por pica",                "precio": 5, "efecto": "mult_por_pica_3"},
+    "gluttonous":   {"nombre": "Gluttonous",   "desc": "+3 Mult por trebol",              "precio": 5, "efecto": "mult_por_trebol_3"},
+    "sly":          {"nombre": "Sly",          "desc": "+50 Chips si pareja",             "precio": 3, "efecto": "chips_si_pareja_50"},
+    "wily":         {"nombre": "Wily",         "desc": "+100 Chips si trio",              "precio": 4, "efecto": "chips_si_trio_100"},
+    "clever":       {"nombre": "Clever",       "desc": "+80 Chips si doble pareja",       "precio": 4, "efecto": "chips_si_doble_80"},
+    "devious":      {"nombre": "Devious",      "desc": "+100 Chips si escalera",          "precio": 4, "efecto": "chips_si_escalera_100"},
+    "crafty":       {"nombre": "Crafty",       "desc": "+80 Chips si color",              "precio": 4, "efecto": "chips_si_color_80"},
+    "banner":       {"nombre": "Banner",       "desc": "+30 Chips por descarte restante", "precio": 5, "efecto": "chips_por_descarte_30"},
+    "abstract":     {"nombre": "Abstract",     "desc": "+3 Mult por joker que tengas",    "precio": 4, "efecto": "mult_por_joker_3"},
+    "misprint":     {"nombre": "Misprint",     "desc": "+0-23 Mult aleatorio",            "precio": 3, "efecto": "mult_aleatorio_23"},
+    "raised_fist":  {"nombre": "Raised Fist",  "desc": "+2*valor de tu carta mas baja",   "precio": 5, "efecto": "mult_carta_baja_2"},
+    "even_steven":  {"nombre": "Even Steven",  "desc": "+4 Mult por carta par jugada",    "precio": 4, "efecto": "mult_par_4"},
+}
+
+MAX_JOKERS = 5
+
+# Boss blinds: efectos especiales que solo aparecen en ronda 2 (Boss)
+BOSS_BLINDS = {
+    "the_hook":   {"nombre": "The Hook",   "desc": "Tras cada mano, descarta 2 cartas al azar"},
+    "the_ox":     {"nombre": "The Ox",     "desc": "Cada mano jugada te cuesta $3"},
+    "the_club":   {"nombre": "The Club",   "desc": "Los treboles no puntuan"},
+    "the_plant":  {"nombre": "The Plant",  "desc": "Cartas de rango <8 no puntuan"},
+    "the_needle": {"nombre": "The Needle", "desc": "Solo 1 mano para jugar"},
+}
+
+# Economia
+ORO_INICIAL = 4
+ORO_BASE_POR_RONDA = 3
+ORO_INTERES_CAP = 5  # max $5 de interes
+RERROLL_PRECIO_INICIAL = 1
+TIENDA_JOKERS_POR_TIRADA = 2
 
 
 COLORES = {
@@ -257,11 +315,99 @@ def evaluar_mano(cartas):
 
 
 def puntuar_mano(cartas):
+    """Puntuacion base, sin contexto (usado en preview cuando no hay partida)."""
     tipo = evaluar_mano(cartas)
     base_chips, mult = PUNTOS_MANO[tipo]
     suma = sum(VALOR_CARTA[r] for r, _ in cartas)
     chips = base_chips + suma
     return tipo, chips, mult, chips * mult
+
+
+# tipos de mano que contienen cada sub-tipo
+TIPOS_CON_PAREJA = {"pareja", "doble_pareja", "trio", "full", "poker"}
+TIPOS_CON_TRIO = {"trio", "full", "poker"}
+TIPOS_CON_DOBLE = {"doble_pareja", "full"}
+TIPOS_CON_ESCALERA = {"escalera", "escalera_color", "escalera_real"}
+TIPOS_CON_COLOR = {"color", "escalera_color", "escalera_real"}
+
+
+def aplicar_jokers(partida, ronda_st, sel_cartas, tipo, chips, mult):
+    for j in partida["jokers"]:
+        ef = j["efecto"]
+        if ef == "mult_plano_4":
+            mult += 4
+        elif ef == "mult_si_pareja_8" and tipo in TIPOS_CON_PAREJA:
+            mult += 8
+        elif ef == "mult_si_trio_12" and tipo in TIPOS_CON_TRIO:
+            mult += 12
+        elif ef == "mult_si_doble_10" and tipo in TIPOS_CON_DOBLE:
+            mult += 10
+        elif ef == "mult_si_escalera_12" and tipo in TIPOS_CON_ESCALERA:
+            mult += 12
+        elif ef == "mult_si_color_10" and tipo in TIPOS_CON_COLOR:
+            mult += 10
+        elif ef == "mult_por_diamante_3":
+            for r, p in sel_cartas:
+                if p == "D":
+                    mult += 3
+        elif ef == "mult_por_corazon_3":
+            for r, p in sel_cartas:
+                if p == "H":
+                    mult += 3
+        elif ef == "mult_por_pica_3":
+            for r, p in sel_cartas:
+                if p == "S":
+                    mult += 3
+        elif ef == "mult_por_trebol_3":
+            for r, p in sel_cartas:
+                if p == "C":
+                    mult += 3
+        elif ef == "chips_si_pareja_50" and tipo in TIPOS_CON_PAREJA:
+            chips += 50
+        elif ef == "chips_si_trio_100" and tipo in TIPOS_CON_TRIO:
+            chips += 100
+        elif ef == "chips_si_doble_80" and tipo in TIPOS_CON_DOBLE:
+            chips += 80
+        elif ef == "chips_si_escalera_100" and tipo in TIPOS_CON_ESCALERA:
+            chips += 100
+        elif ef == "chips_si_color_80" and tipo in TIPOS_CON_COLOR:
+            chips += 80
+        elif ef == "chips_por_descarte_30":
+            chips += 30 * ronda_st["descartes_restantes"]
+        elif ef == "mult_por_joker_3":
+            mult += 3 * len(partida["jokers"])
+        elif ef == "mult_aleatorio_23":
+            mult += random.randint(0, 23)
+        elif ef == "mult_carta_baja_2":
+            if sel_cartas:
+                mn = min(VALOR_CARTA[r] for r, _ in sel_cartas)
+                mult += 2 * mn
+        elif ef == "mult_par_4":
+            for r, _ in sel_cartas:
+                if r % 2 == 0 and r <= 10:
+                    mult += 4
+    return chips, mult
+
+
+def puntuar_jugada(partida, ronda_st, sel_cartas):
+    """Puntuacion completa con niveles de mano, jokers y efectos de boss."""
+    tipo = evaluar_mano(sel_cartas)
+    base_chips, base_mult = PUNTOS_MANO[tipo]
+    nivel = partida["niveles_mano"].get(tipo, 1)
+    bc_nivel, bm_nivel = NIVEL_HAND_BONUS[tipo]
+    chips = base_chips + bc_nivel * (nivel - 1)
+    mult = base_mult + bm_nivel * (nivel - 1)
+
+    boss = ronda_st.get("boss_efecto")
+    for r, p in sel_cartas:
+        if boss == "the_club" and p == "C":
+            continue
+        if boss == "the_plant" and r < 8:
+            continue
+        chips += VALOR_CARTA[r]
+
+    chips, mult = aplicar_jokers(partida, ronda_st, sel_cartas, tipo, chips, mult)
+    return tipo, chips, mult, int(chips * mult)
 
 
 # ---------- estado de la partida ----------
@@ -278,22 +424,48 @@ NOMBRE_RONDA = ["Pequena", "Grande", "Boss"]
 def nueva_partida():
     return {
         "ante": 1,
-        "ronda": 0,  # 0, 1, 2
+        "ronda": 0,  # 0=pequena, 1=grande, 2=boss
         "score_total": 0,
+        "oro": ORO_INICIAL,
+        "jokers": [],   # lista de dicts con 'id', 'nombre', 'desc', 'efecto', 'precio'
+        "niveles_mano": {t: 1 for t in PUNTOS_MANO},
+        "rerolls_tienda": 0,  # cuentas para escalar el precio del reroll en la tienda actual
     }
 
 
 def nueva_ronda(partida):
+    manos_ini = MANOS_POR_RONDA
+    boss_efecto = None
+    if partida["ronda"] == 2:
+        boss_efecto = random.choice(list(BOSS_BLINDS.keys()))
+        if boss_efecto == "the_needle":
+            manos_ini = 1
     return {
         "mazo": barajar_mazo(),
-        "mano": [],          # cartas actuales en mano
-        "seleccion": set(),  # indices seleccionados
-        "manos_restantes": MANOS_POR_RONDA,
+        "mano": [],
+        "seleccion": set(),
+        "manos_restantes": manos_ini,
         "descartes_restantes": DESCARTES_POR_RONDA,
         "score_ronda": 0,
         "objetivo": objetivo_ronda(partida["ante"], partida["ronda"]),
         "msg": "",
+        "boss_efecto": boss_efecto,
     }
+
+
+def calcular_oro_ronda(partida, ronda_st):
+    """Devuelve lista de (concepto, cantidad) y total."""
+    base = ORO_BASE_POR_RONDA
+    bonus_manos = ronda_st["manos_restantes"]
+    bonus_descartes = ronda_st["descartes_restantes"]
+    interes = min(ORO_INTERES_CAP, partida["oro"] // 5)
+    desglose = [
+        ("Base por pasar", base),
+        ("Manos sin usar", bonus_manos),
+        ("Descartes sin usar", bonus_descartes),
+        ("Interes (1$ por cada 5$)", interes),
+    ]
+    return desglose, base + bonus_manos + bonus_descartes + interes
 
 
 def robar(ronda_st):
@@ -371,8 +543,10 @@ def _dibujar_carta(frame, y_base, x, carta, seleccionada):
 def render(partida, ronda_st):
     frame = frame_nuevo()
 
-    # titulo
-    titulo = f" BBSATRO   Ante {partida['ante']}   Ronda: {NOMBRE_RONDA[partida['ronda']]} "
+    # titulo con boss suffix
+    boss = ronda_st.get("boss_efecto")
+    suf = f" [{BOSS_BLINDS[boss]['nombre']}]" if boss else ""
+    titulo = f" BBSATRO   Ante {partida['ante']}   Ronda: {NOMBRE_RONDA[partida['ronda']]}{suf} "
     pad_l = (COLS - len(titulo)) // 2
     set_text(frame, ROW_TITLE, 0, "\u2550" * pad_l, "blancoB")
     set_text(frame, ROW_TITLE, pad_l, titulo, "amarB", "bold")
@@ -380,49 +554,56 @@ def render(partida, ronda_st):
 
     set_text(frame, ROW_SEP1, 0, "\u2500" * COLS, "dim")
 
-    # info row 1: objetivo, puntuacion ronda
+    # info row 1: objetivo | score ronda | manos | descartes | oro
     obj = ronda_st["objetivo"]
     score = ronda_st["score_ronda"]
     col_score = "verdeB" if score >= obj else ("amarB" if score > 0 else "blanco")
-    info1 = f" Objetivo: {obj}      Puntos ronda: {score}      Total: {partida['score_total']}"
-    set_text(frame, ROW_INFO1, 0, info1, "blanco")
-    set_text(frame, ROW_INFO1, 11, str(obj), "rojoB", "bold")
-    idx_score = info1.index("Puntos ronda:") + len("Puntos ronda: ")
-    set_text(frame, ROW_INFO1, idx_score, str(score), col_score, "bold")
-    idx_total = info1.index("Total:") + len("Total: ")
-    set_text(frame, ROW_INFO1, idx_total, str(partida["score_total"]), "cyanB")
+    x = 1
+    set_text(frame, ROW_INFO1, x, "Obj:", "blanco"); x += 5
+    set_text(frame, ROW_INFO1, x, str(obj), "rojoB", "bold"); x += len(str(obj)) + 3
+    set_text(frame, ROW_INFO1, x, "Score:", "blanco"); x += 7
+    set_text(frame, ROW_INFO1, x, str(score), col_score, "bold"); x += len(str(score)) + 3
+    set_text(frame, ROW_INFO1, x, f"Manos: {ronda_st['manos_restantes']}/{MANOS_POR_RONDA}", "amarB"); x += 11
+    set_text(frame, ROW_INFO1, x, f"Desc: {ronda_st['descartes_restantes']}/{DESCARTES_POR_RONDA}", "cyanB"); x += 10
+    set_text(frame, ROW_INFO1, x, f"Oro: ${partida['oro']}", "amarB", "bold")
 
-    # info row 2: manos/descartes
-    info2 = f" Manos restantes: {ronda_st['manos_restantes']}/{MANOS_POR_RONDA}      Descartes: {ronda_st['descartes_restantes']}/{DESCARTES_POR_RONDA}"
-    set_text(frame, ROW_INFO2, 0, info2, "blanco")
-    set_text(frame, ROW_INFO2, 18, str(ronda_st["manos_restantes"]), "amarB", "bold")
-    idx_d = info2.index("Descartes:") + len("Descartes: ")
-    set_text(frame, ROW_INFO2, idx_d, str(ronda_st["descartes_restantes"]), "cyanB", "bold")
+    # info row 2: jokers | boss desc
+    x = 1
+    set_text(frame, ROW_INFO2, x, f"Jokers ({len(partida['jokers'])}/{MAX_JOKERS}):", "blanco"); x += 14
+    if partida["jokers"]:
+        for j in partida["jokers"]:
+            etiq = f"[{j['nombre']}]"
+            set_text(frame, ROW_INFO2, x, etiq, "magentaB", "bold")
+            x += len(etiq) + 1
+    else:
+        set_text(frame, ROW_INFO2, x, "(ninguno)", "dim"); x += 10
+    if boss:
+        bdesc = f"  BOSS: {BOSS_BLINDS[boss]['desc']}"
+        x_boss = max(x + 1, COLS - len(bdesc) - 1)
+        set_text(frame, ROW_INFO2, x_boss, bdesc, "rojoB")
 
     set_text(frame, ROW_SEP2, 0, "\u2500" * COLS, "dim")
 
-    # cartas: grid 7x5 con bordes CP437. Seleccionadas levantadas 1 fila.
+    # cartas
     mano = ronda_st["mano"]
     n = len(mano)
     paso = CARTA_ANCHO + CARTA_GAP
     ancho_cartas = n * paso - CARTA_GAP
     sangria = (COLS - ancho_cartas) // 2
-
     for i in range(n):
         col = sangria + i * paso
-        carta = mano[i]
         seleccionada = i in ronda_st["seleccion"]
-        _dibujar_carta(frame, ROW_CARTA_Y, col, carta, seleccionada)
-        # indice bajo la carta (alineado al centro, col + 3)
+        _dibujar_carta(frame, ROW_CARTA_Y, col, mano[i], seleccionada)
         set_cell(frame, ROW_CARTAS_IDX, col + 3, str(i + 1), "amarB", "bold")
 
     set_text(frame, ROW_SEP3, 0, "\u2500" * COLS, "dim")
 
-    # preview: si hay seleccion, mostrar tipo de mano y puntos potenciales
+    # preview
     if ronda_st["seleccion"]:
         sel_cartas = [mano[i] for i in sorted(ronda_st["seleccion"])]
-        tipo, chips, mult, total = puntuar_mano(sel_cartas)
-        texto_tipo = f" Mano: {NOMBRES_MANO[tipo]}"
+        tipo, chips, mult, total = puntuar_jugada(partida, ronda_st, sel_cartas)
+        nivel = partida["niveles_mano"].get(tipo, 1)
+        texto_tipo = f" Mano: {NOMBRES_MANO[tipo]}   (nivel {nivel})"
         set_text(frame, ROW_PREVIEW, 0, texto_tipo, "cyanB", "bold")
         texto_puntos = f" Chips: {chips}   Mult: {mult}   = {total}"
         set_text(frame, ROW_PREVIEW2, 0, texto_puntos, "verdeB")
@@ -431,15 +612,13 @@ def render(partida, ronda_st):
 
     set_text(frame, ROW_SEP4, 0, "\u2500" * COLS, "dim")
 
-    # mensaje
     if ronda_st["msg"]:
         texto = ronda_st["msg"][:COLS - 2]
         set_text(frame, ROW_MSG, 1, texto, "amarB", "bold")
 
     set_text(frame, ROW_SEP5, 0, "\u2500" * COLS, "dim")
 
-    # controles
-    ctrl = " 1-8 seleccionar    P jugar mano    D descartar seleccion    Q salir "
+    ctrl = " 1-8 seleccionar    P jugar    D descartar    Q salir "
     set_text(frame, ROW_CTRL, (COLS - len(ctrl)) // 2, ctrl, "dim")
 
     flush_frame(frame)
@@ -597,13 +776,13 @@ def jugar_ronda(partida):
     while True:
         render(partida, ronda_st)
         if ronda_st["score_ronda"] >= ronda_st["objetivo"]:
-            return "ganada"
+            return "ganada", ronda_st
         if ronda_st["manos_restantes"] <= 0:
-            return "perdida"
+            return "perdida", ronda_st
 
         tecla = leer_tecla()
         if tecla in ("q", "Q", "\x03"):
-            return "salir"
+            return "salir", ronda_st
         if tecla in ("1", "2", "3", "4", "5", "6", "7", "8"):
             idx = int(tecla) - 1
             if 0 <= idx < len(ronda_st["mano"]):
@@ -620,14 +799,28 @@ def jugar_ronda(partida):
                 continue
             sel_sorted = sorted(ronda_st["seleccion"])
             sel_cartas = [ronda_st["mano"][i] for i in sel_sorted]
-            tipo, chips, mult, total = puntuar_mano(sel_cartas)
+            # sube nivel de la mano ANTES de puntuar (la jugada actual se beneficia)
+            tipo_previo = evaluar_mano(sel_cartas)
+            partida["niveles_mano"][tipo_previo] = partida["niveles_mano"].get(tipo_previo, 1) + 1
+            tipo, chips, mult, total = puntuar_jugada(partida, ronda_st, sel_cartas)
             ronda_st["score_ronda"] += total
-            ronda_st["msg"] = f"Juegas {NOMBRES_MANO[tipo]}: {chips} x {mult} = {total} puntos."
-            # eliminar cartas jugadas de la mano
+            ronda_st["msg"] = f"Juegas {NOMBRES_MANO[tipo]}: {chips} x {mult} = {total} pts."
+            # eliminar cartas jugadas
             ronda_st["mano"] = [cc for i, cc in enumerate(ronda_st["mano"]) if i not in ronda_st["seleccion"]]
             ronda_st["seleccion"] = set()
             ronda_st["manos_restantes"] -= 1
+            # boss effects post-mano
+            boss = ronda_st.get("boss_efecto")
+            if boss == "the_ox":
+                partida["oro"] = max(0, partida["oro"] - 3)
+                ronda_st["msg"] += "  (The Ox: -$3)"
             robar(ronda_st)
+            if boss == "the_hook" and ronda_st["mano"]:
+                descartar = min(2, len(ronda_st["mano"]))
+                idxs = random.sample(range(len(ronda_st["mano"])), descartar)
+                ronda_st["mano"] = [cc for i, cc in enumerate(ronda_st["mano"]) if i not in idxs]
+                robar(ronda_st)
+                ronda_st["msg"] += f"  (The Hook: -{descartar} cartas al azar)"
         elif tecla in ("d", "D"):
             if not ronda_st["seleccion"]:
                 ronda_st["msg"] = "Selecciona cartas para descartar."
@@ -642,19 +835,133 @@ def jugar_ronda(partida):
             ronda_st["msg"] = "Cartas descartadas."
 
 
+def render_tienda(partida, tienda_jokers, desglose_oro, mensaje=None):
+    frame = frame_nuevo()
+
+    titulo = " TIENDA "
+    pad_l = (COLS - len(titulo)) // 2
+    set_text(frame, 0, 0, "\u2550" * pad_l, "blancoB")
+    set_text(frame, 0, pad_l, titulo, "amarB", "bold")
+    set_text(frame, 0, pad_l + len(titulo), "\u2550" * (COLS - pad_l - len(titulo)), "blancoB")
+
+    y = 2
+    if desglose_oro:
+        set_text(frame, y, 2, "Has ganado esta ronda:", "cyanB", "bold")
+        y += 1
+        for concepto, cant in desglose_oro:
+            set_text(frame, y, 4, concepto + ":", "blanco")
+            set_text(frame, y, 30, f"+${cant}", "amarB", "bold")
+            y += 1
+        total = sum(cc for _, cc in desglose_oro)
+        set_text(frame, y, 4, "TOTAL:", "blanco", "bold")
+        set_text(frame, y, 30, f"+${total}", "verdeB", "bold")
+        y += 2
+    set_text(frame, y, 2, f"Oro actual: ${partida['oro']}", "amarB", "bold")
+    y += 2
+
+    set_text(frame, y, 2, "JOKERS EN VENTA:", "cyanB", "bold")
+    y += 1
+    if not tienda_jokers:
+        set_text(frame, y, 4, "(sin jokers disponibles)", "dim")
+        y += 2
+    else:
+        for i, j_id in enumerate(tienda_jokers):
+            jd = JOKERS[j_id]
+            ya_tengo = any(j["id"] == j_id for j in partida["jokers"])
+            puedo = (partida["oro"] >= jd["precio"]
+                     and len(partida["jokers"]) < MAX_JOKERS
+                     and not ya_tengo)
+            col = "verdeB" if puedo else "dim"
+            set_text(frame, y, 4, f"{i+1}) [{jd['nombre']}]", col, "bold")
+            set_text(frame, y, 28, jd["desc"], "blanco")
+            set_text(frame, y, 66, f"${jd['precio']}", col, "bold")
+            y += 1
+        y += 1
+
+    set_text(frame, y, 2, f"Tus jokers ({len(partida['jokers'])}/{MAX_JOKERS}):", "magentaB", "bold")
+    y += 1
+    if partida["jokers"]:
+        for j in partida["jokers"]:
+            set_text(frame, y, 4, f"- {j['nombre']}: {j['desc']}", "blanco")
+            y += 1
+    else:
+        set_text(frame, y, 4, "(ninguno)", "dim")
+        y += 1
+
+    if mensaje:
+        set_text(frame, 21, 2, mensaje, "amarB", "bold")
+
+    precio_rr = RERROLL_PRECIO_INICIAL + partida.get("rerolls_tienda", 0)
+    ctrl = f" 1/2 comprar    R reroll (${precio_rr})    ENTER continuar "
+    set_text(frame, 22, (COLS - len(ctrl)) // 2, ctrl, "dim")
+
+    flush_frame(frame)
+
+
+def tienda(partida, desglose_oro):
+    def _disponibles():
+        return [j_id for j_id in JOKERS if not any(j["id"] == j_id for j in partida["jokers"])]
+
+    partida["rerolls_tienda"] = 0
+    disp = _disponibles()
+    tienda_jokers = random.sample(disp, min(TIENDA_JOKERS_POR_TIRADA, len(disp)))
+    mensaje = None
+
+    while True:
+        render_tienda(partida, tienda_jokers, desglose_oro, mensaje)
+        mensaje = None
+        tecla = leer_tecla()
+        if tecla in ("\r", "\n", " ", "q", "Q", "\x1b"):
+            return
+        if tecla in ("1", "2") and int(tecla) - 1 < len(tienda_jokers):
+            idx = int(tecla) - 1
+            j_id = tienda_jokers[idx]
+            jd = JOKERS[j_id]
+            if any(j["id"] == j_id for j in partida["jokers"]):
+                mensaje = "Ya tienes ese joker."
+                continue
+            if len(partida["jokers"]) >= MAX_JOKERS:
+                mensaje = "Slots de jokers llenos."
+                continue
+            if partida["oro"] < jd["precio"]:
+                mensaje = "No tienes oro suficiente."
+                continue
+            partida["oro"] -= jd["precio"]
+            partida["jokers"].append({"id": j_id, **jd})
+            tienda_jokers.pop(idx)
+            mensaje = f"Comprado: {jd['nombre']}"
+        elif tecla in ("r", "R"):
+            precio_rr = RERROLL_PRECIO_INICIAL + partida["rerolls_tienda"]
+            if partida["oro"] < precio_rr:
+                mensaje = "No tienes oro para reroll."
+                continue
+            partida["oro"] -= precio_rr
+            partida["rerolls_tienda"] += 1
+            disp = _disponibles()
+            tienda_jokers = random.sample(disp, min(TIENDA_JOKERS_POR_TIRADA, len(disp)))
+            mensaje = "Nuevos jokers."
+
+
 def jugar():
     partida = nueva_partida()
     cls()
     sys.stdout.write(show_cursor(False))
 
     while True:
-        resultado = jugar_ronda(partida)
+        resultado, ronda_st = jugar_ronda(partida)
         if resultado == "salir":
             return partida, "salir"
         if resultado == "perdida":
             return partida, "perdida"
         # ronda ganada
-        partida["score_total"] += 1  # placeholder: bonus simbolico por pasar ronda
+        partida["score_total"] += ronda_st["score_ronda"]
+        desglose, total_oro = calcular_oro_ronda(partida, ronda_st)
+        partida["oro"] += total_oro
+        # tienda entre rondas
+        cls()
+        tienda(partida, desglose)
+        cls()
+        # avanzar ronda/ante
         partida["ronda"] += 1
         if partida["ronda"] >= 3:
             partida["ronda"] = 0

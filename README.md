@@ -55,7 +55,7 @@ python3 buscaminas/buscaminas.py
 
 ### [maze/](maze/) - Maze BBS
 
-Roguelike turn-based de un jugador. Mazmorra procedural (6-10 habitaciones + pasillos), 4 tipos de enemigos escalados por nivel (rata, goblin, orco, troll), 4 tipos de items (oro, pocion, arma, armadura). Combate bump-to-attack, subes de nivel con XP, bajas escaleras a mazmorras mas profundas. Sin limite.
+Roguelike turn-based de un jugador. Mazmorra procedural, 8 tipos de enemigos (rata, goblin, esqueleto, hobgoblin, orco, troll, ogro, dragon como boss), items, scrolls (fuego/teletransporte/mapeo), trampas, inventario de 10 slots. Combate bump-to-attack, subes de nivel con XP, bajas 10 niveles hasta el Dragon para recuperar el Amuleto de Yendor y volver a la superficie. Victoria + bonus.
 
 ```
 python3 maze/maze.py
@@ -63,7 +63,7 @@ python3 maze/maze.py
 
 ### [bbsatro/](bbsatro/) - BBSATRO (balatro.py)
 
-Deckbuilder inspirado en Balatro. Juegas manos de poker para superar una puntuacion objetivo cada ronda. 52 cartas, 8 en mano, seleccionas 1-5 y juegas con P o descartas con D. Sistema de antes con 3 rondas (Pequena, Grande, Boss) y objetivos exponenciales. Fase 1 sin jokers.
+Deckbuilder inspirado en Balatro. Juegas manos de poker para superar una puntuacion objetivo cada ronda. 52 cartas, 8 en mano con render visual (cartas 7x5 con bordes CP437 y palos coloreados). 20 jokers comprables en la tienda que modifican chips/mult. 5 boss blinds con efectos especiales. Upgrade automatico de tipos de mano al jugarlos. Economia con oro e interes.
 
 ```
 python3 bbsatro/balatro.py
