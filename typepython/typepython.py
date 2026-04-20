@@ -41,11 +41,11 @@ COLORES = {
     "magenta": "\x1b[35m",
     "cyan":    "\x1b[36m",
     "blanco":  "\x1b[37m",
-    "rojoB":   "\x1b[91m",
-    "verdeB":  "\x1b[92m",
-    "amarB":   "\x1b[93m",
-    "azulB":   "\x1b[94m",
-    "cyanB":   "\x1b[96m",
+    "rojoB":   "\x1b[1;31m",
+    "verdeB":  "\x1b[1;32m",
+    "amarB":   "\x1b[1;33m",
+    "azulB":   "\x1b[1;34m",
+    "cyanB":   "\x1b[1;36m",
     "bold":    "\x1b[1m",
     "dim":     "\x1b[2m",
 }
@@ -158,34 +158,72 @@ def render_status(puntos, nivel, vidas, palabras_ok):
     sys.stdout.write(at(STATUS_ROW, 3) + clr_line()[:0] + texto)
 
 
-def render_frame(palabras, puntos, nivel, vidas, palabras_ok):
+def _celdas_palabra(word, x, y):
+    """Devuelve el set de celdas (x,y) ocupadas por word empezando en x,y."""
+    celdas = set()
+    for i in range(len(word)):
+        cx = x + i
+        if 2 <= cx < COLS - 1:
+            celdas.add((cx, y))
+    return celdas
+
+
+def render_frame(palabras, puntos, nivel, vidas, palabras_ok, prev):
+    """Render incremental. prev es dict con:
+        - 'snapshot': lista de (word, x_int, y) del tick anterior
+        - 'status': tupla (puntos, nivel, vidas, aciertos) del tick anterior
+    Devuelve el nuevo prev.
+    """
     buf = "\x1b[s"
-    # limpiar area de juego (interior del marco)
-    for y in range(GAME_TOP, GAME_BOTTOM + 1):
-        buf += at(y, 2) + " " * (COLS - 2)
-    # pintar palabras
+
+    # Area de juego: borrar celdas ocupadas antes pero ya no
+    celdas_antes = set()
+    for word, x, y in prev["snapshot"]:
+        celdas_antes |= _celdas_palabra(word, x, y)
+    celdas_ahora = set()
+    for p in palabras:
+        celdas_ahora |= _celdas_palabra(p["word"], int(p["x"]), p["y"])
+    for (cx, cy) in celdas_antes - celdas_ahora:
+        buf += at(cy, cx) + " "
+
+    # Pintar palabras actuales (escribe todas las celdas con letra+color)
     for p in palabras:
         x = int(p["x"])
-        if x < 2 or x >= COLS - 1:
+        if x >= COLS - 1:
             continue
+        y = p["y"]
         max_len = (COLS - 1) - x
-        w = p["word"][:max_len]
-        buf += at(p["y"], x) + c(w, "amarB", "bold")
-    # status
-    buf += at(STATUS_ROW, 2) + " " * (COLS - 2)
-    vivas = c("\u2588" * vidas, "rojoB", "bold")
-    muertas = c("\u2588" * (VIDAS_INICIAL - vidas), "dim")
-    corazones = vivas + muertas
-    linea_estado = (
-        f" Puntos: {c(str(puntos).rjust(6), 'verdeB', 'bold')}  "
-        f"Nivel: {c(str(nivel).rjust(2), 'amarB', 'bold')}  "
-        f"Aciertos: {c(str(palabras_ok).rjust(4), 'cyanB')}  "
-        f"Vidas: {corazones}"
-    )
-    buf += at(STATUS_ROW, 3) + linea_estado
+        visible = p["word"][:max_len]
+        if x < 2:
+            recorte = 2 - x
+            if recorte >= len(visible):
+                continue
+            visible = visible[recorte:]
+            x = 2
+        buf += at(y, x) + c(visible, "amarB", "bold")
+
+    nuevo_snapshot = [(p["word"], int(p["x"]), p["y"]) for p in palabras]
+
+    # Status: solo redibujar si algo cambio
+    status_ahora = (puntos, nivel, vidas, palabras_ok)
+    if status_ahora != prev["status"]:
+        vivas = c("\u2588" * vidas, "rojoB", "bold")
+        muertas = c("\u2588" * (VIDAS_INICIAL - vidas), "dim")
+        corazones = vivas + muertas
+        linea_estado = (
+            f" Puntos: {c(str(puntos).rjust(6), 'verdeB', 'bold')}  "
+            f"Nivel: {c(str(nivel).rjust(2), 'amarB', 'bold')}  "
+            f"Aciertos: {c(str(palabras_ok).rjust(4), 'cyanB')}  "
+            f"Vidas: {corazones}"
+        )
+        buf += at(STATUS_ROW, 2) + " " * (COLS - 2)
+        buf += at(STATUS_ROW, 3) + linea_estado
+
     buf += "\x1b[u"
     sys.stdout.write(buf)
     sys.stdout.flush()
+
+    return {"snapshot": nuevo_snapshot, "status": status_ahora}
 
 
 LOGO_TYPESPEED = [
@@ -347,6 +385,7 @@ def jugar():
     vel_cols_seg = 3.0
     spawn_cada = 3.0
     ultimo_spawn = 0.0
+    prev_render = {"snapshot": [], "status": None}
 
     sys.stdout.write(at(PROMPT_ROW, PROMPT_COL) + "> ")
     sys.stdout.flush()
@@ -372,7 +411,7 @@ def jugar():
                     vidas -= 1
                     palabras.remove(p)
 
-            render_frame(palabras, puntos, nivel, vidas, aciertos)
+            prev_render = render_frame(palabras, puntos, nivel, vidas, aciertos, prev_render)
 
             resto = TICK - (time.time() - tick_start)
             if resto > 0:

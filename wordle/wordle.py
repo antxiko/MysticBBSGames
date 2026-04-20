@@ -64,10 +64,10 @@ COLORES = {
     "magenta": "\x1b[35m",
     "cyan":    "\x1b[36m",
     "blanco":  "\x1b[37m",
-    "rojoB":   "\x1b[91m",
-    "verdeB":  "\x1b[92m",
-    "amarB":   "\x1b[93m",
-    "cyanB":   "\x1b[96m",
+    "rojoB":   "\x1b[1;31m",
+    "verdeB":  "\x1b[1;32m",
+    "amarB":   "\x1b[1;33m",
+    "cyanB":   "\x1b[1;36m",
     "bold":    "\x1b[1m",
     "dim":     "\x1b[2m",
 }
@@ -77,7 +77,7 @@ RESET = "\x1b[0m"
 CELDA = {
     "acierto": "\x1b[42;30;1m",   # fondo verde, texto negro, negrita
     "parcial": "\x1b[43;30;1m",   # fondo amarillo, texto negro, negrita
-    "fallo":   "\x1b[100;97m",    # fondo gris oscuro, texto blanco
+    "fallo":   "\x1b[40;1;37m",    # fondo gris oscuro, texto blanco
     "nada":    "\x1b[47;30m",     # fondo gris claro, texto negro (teclado sin usar)
     "vacio":   "\x1b[40;37;2m",   # fondo negro, texto gris (celda aun no jugada)
 }
