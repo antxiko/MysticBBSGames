@@ -1,0 +1,814 @@
+#!/usr/bin/env python3
+"""Maze BBS - roguelike turn-based de un jugador."""
+import os
+import random
+import sys
+from datetime import date
+
+try:
+    sys.stdout.reconfigure(encoding="cp437", errors="replace")
+except Exception:
+    pass
+
+try:
+    import termios
+    import tty
+    TERMIOS_OK = True
+except ImportError:
+    TERMIOS_OK = False
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCORES_FILE = os.path.join(SCRIPT_DIR, "maze_scores.txt")
+MAX_TOP = 10
+
+COLS = 80
+ROWS = 24
+MAP_W = 76
+MAP_H = 16
+MAP_X0 = 2  # col 0-based dentro del shadow buffer donde empieza el mapa
+MAP_Y0 = 2
+
+ROW_TITLE = 0
+ROW_SEP1 = 1
+ROW_MAP_TOP = MAP_Y0
+ROW_MAP_BOT = MAP_Y0 + MAP_H - 1
+ROW_SEP2 = ROW_MAP_BOT + 1
+ROW_STATS = ROW_SEP2 + 1
+ROW_SEP3 = ROW_STATS + 1
+ROW_LOG = ROW_SEP3 + 1
+ROW_SEP4 = ROW_LOG + 1
+ROW_CTRL = ROW_SEP4 + 1
+
+TILE_WALL = 0
+TILE_FLOOR = 1
+
+COLORES = {
+    "rojo":    "\x1b[31m",
+    "verde":   "\x1b[32m",
+    "amar":    "\x1b[33m",
+    "azul":    "\x1b[34m",
+    "magenta": "\x1b[35m",
+    "cyan":    "\x1b[36m",
+    "blanco":  "\x1b[37m",
+    "rojoB":   "\x1b[1;31m",
+    "verdeB":  "\x1b[1;32m",
+    "amarB":   "\x1b[1;33m",
+    "azulB":   "\x1b[1;34m",
+    "magentaB":"\x1b[1;35m",
+    "cyanB":   "\x1b[1;36m",
+    "blancoB": "\x1b[1;37m",
+    "bold":    "\x1b[1m",
+    "dim":     "\x1b[2m",
+    "reverso": "\x1b[7m",
+}
+RESET = "\x1b[0m"
+
+
+def c(txt, *estilos):
+    if not estilos:
+        return str(txt)
+    prefijo = "".join(COLORES[e] for e in estilos if e in COLORES)
+    if not prefijo:
+        return str(txt)
+    return f"{prefijo}{txt}{RESET}"
+
+
+def at(row, col):
+    return f"\x1b[{row};{col}H"
+
+
+# ---------- shadow buffer ----------
+
+SHADOW_ROWS = 24
+SHADOW_COLS = 80
+_shadow = [[" "] * SHADOW_COLS for _ in range(SHADOW_ROWS)]
+
+
+def reset_shadow():
+    global _shadow
+    _shadow = [[" "] * SHADOW_COLS for _ in range(SHADOW_ROWS)]
+
+
+def frame_nuevo():
+    return [[" "] * SHADOW_COLS for _ in range(SHADOW_ROWS)]
+
+
+def set_cell(frame, y, x, ch, *estilos):
+    if not (0 <= y < SHADOW_ROWS and 0 <= x < SHADOW_COLS):
+        return
+    prefijo = "".join(COLORES[e] for e in estilos if e in COLORES)
+    frame[y][x] = f"{prefijo}{ch}{RESET}" if prefijo else ch
+
+
+def set_text(frame, y, x, texto, *estilos):
+    prefijo = "".join(COLORES[e] for e in estilos if e in COLORES)
+    sufijo = RESET if prefijo else ""
+    for i, ch in enumerate(texto):
+        cx = x + i
+        if 0 <= y < SHADOW_ROWS and 0 <= cx < SHADOW_COLS:
+            frame[y][cx] = f"{prefijo}{ch}{sufijo}" if prefijo else ch
+
+
+def flush_frame(frame):
+    global _shadow
+    out = []
+    for y in range(SHADOW_ROWS):
+        for x in range(SHADOW_COLS):
+            if frame[y][x] != _shadow[y][x]:
+                out.append(at(y + 1, x + 1) + frame[y][x])
+                _shadow[y][x] = frame[y][x]
+    if out:
+        sys.stdout.write("".join(out))
+        sys.stdout.flush()
+
+
+def cls():
+    sys.stdout.write("\x1b[2J\x1b[H")
+    sys.stdout.flush()
+    reset_shadow()
+
+
+def show_cursor(v):
+    return "\x1b[?25h" if v else "\x1b[?25l"
+
+
+# ---------- terminal raw ----------
+
+def entrar_cbreak():
+    if not TERMIOS_OK:
+        return None
+    try:
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        tty.setcbreak(fd)
+        return old
+    except Exception:
+        return None
+
+
+def restaurar_terminal(old):
+    if old is None or not TERMIOS_OK:
+        return
+    try:
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old)
+    except Exception:
+        pass
+
+
+def leer_tecla():
+    ch = sys.stdin.read(1)
+    if ch == "\x1b":
+        import select
+        ready, _, _ = select.select([sys.stdin], [], [], 0.01)
+        if not ready:
+            return ch
+        nxt = sys.stdin.read(1)
+        if nxt != "[":
+            return ch
+        ready2, _, _ = select.select([sys.stdin], [], [], 0.01)
+        if not ready2:
+            return ch
+        arr = sys.stdin.read(1)
+        return f"\x1b[{arr}"
+    return ch
+
+
+# ---------- datos enemigos e items ----------
+
+TIPOS_ENEMIGO = {
+    "rata":   {"ch": "r", "hp": 3,  "atk": 1, "def": 0, "xp": 5,  "oro": (1, 5),   "col": "amar"},
+    "goblin": {"ch": "g", "hp": 6,  "atk": 2, "def": 1, "xp": 10, "oro": (3, 10),  "col": "verde"},
+    "orco":   {"ch": "o", "hp": 12, "atk": 4, "def": 2, "xp": 25, "oro": (10, 25), "col": "rojo"},
+    "troll":  {"ch": "T", "hp": 25, "atk": 6, "def": 3, "xp": 50, "oro": (25, 60), "col": "rojoB"},
+}
+
+TIPOS_ITEM = {
+    "oro":       {"ch": "$", "col": "amarB"},
+    "pocion":    {"ch": "!", "col": "rojoB"},
+    "arma":      {"ch": "/", "col": "cyanB"},
+    "armadura":  {"ch": "[", "col": "magentaB"},
+}
+
+
+def tabla_spawn(nivel):
+    """Devuelve pesos (tipo, count) de enemigos para un nivel."""
+    if nivel == 1:
+        return [("rata", 5), ("goblin", 2)]
+    if nivel == 2:
+        return [("rata", 3), ("goblin", 4), ("orco", 1)]
+    if nivel == 3:
+        return [("goblin", 3), ("orco", 3), ("troll", 1)]
+    # nivel 4+
+    extra_orco = min(6, nivel - 2)
+    extra_troll = (nivel - 3) // 2
+    return [("goblin", 2), ("orco", extra_orco), ("troll", max(1, extra_troll))]
+
+
+def escalar_enemigo(base, nivel):
+    """Aplica bonus por nivel al enemigo."""
+    e = dict(base)
+    bonus = max(0, (nivel - 1) // 2)
+    e["atk"] += bonus
+    e["def"] += bonus
+    e["hp"] += bonus * 2
+    e["hp_max"] = e["hp"]
+    return e
+
+
+# ---------- generacion de mazmorra ----------
+
+def solapa(a, b, margen=1):
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    return not (ax2 + margen < bx1 or bx2 + margen < ax1 or ay2 + margen < by1 or by2 + margen < ay1)
+
+
+def centro(r):
+    x1, y1, x2, y2 = r
+    return ((x1 + x2) // 2, (y1 + y2) // 2)
+
+
+def tallar_habitacion(mapa, r):
+    x1, y1, x2, y2 = r
+    for y in range(y1 + 1, y2):
+        for x in range(x1 + 1, x2):
+            mapa[y][x] = TILE_FLOOR
+
+
+def tallar_tunel(mapa, a, b):
+    ax, ay = a
+    bx, by = b
+    if random.random() < 0.5:
+        for x in range(min(ax, bx), max(ax, bx) + 1):
+            mapa[ay][x] = TILE_FLOOR
+        for y in range(min(ay, by), max(ay, by) + 1):
+            mapa[y][bx] = TILE_FLOOR
+    else:
+        for y in range(min(ay, by), max(ay, by) + 1):
+            mapa[y][ax] = TILE_FLOOR
+        for x in range(min(ax, bx), max(ax, bx) + 1):
+            mapa[by][x] = TILE_FLOOR
+
+
+def celda_aleatoria_en(room):
+    x1, y1, x2, y2 = room
+    return (random.randint(x1 + 1, x2 - 1), random.randint(y1 + 1, y2 - 1))
+
+
+def generar_mazmorra(nivel):
+    mapa = [[TILE_WALL] * MAP_W for _ in range(MAP_H)]
+    rooms = []
+    intentos = 40
+    n_rooms_objetivo = random.randint(6, 10)
+    for _ in range(intentos):
+        if len(rooms) >= n_rooms_objetivo:
+            break
+        w = random.randint(4, 10)
+        h = random.randint(3, 5)
+        x1 = random.randint(1, MAP_W - w - 2)
+        y1 = random.randint(1, MAP_H - h - 2)
+        nueva = (x1, y1, x1 + w, y1 + h)
+        if any(solapa(nueva, r) for r in rooms):
+            continue
+        rooms.append(nueva)
+        tallar_habitacion(mapa, nueva)
+    for i in range(1, len(rooms)):
+        tallar_tunel(mapa, centro(rooms[i - 1]), centro(rooms[i]))
+
+    # jugador en la primera habitacion
+    pjx, pjy = centro(rooms[0])
+    # escaleras en la ultima
+    escx, escy = centro(rooms[-1])
+
+    enemigos = []
+    ocupadas = {(pjx, pjy), (escx, escy)}
+    tabla = tabla_spawn(nivel)
+    for tipo, cantidad in tabla:
+        base = TIPOS_ENEMIGO[tipo]
+        for _ in range(cantidad):
+            for _intento in range(20):
+                if len(rooms) < 2:
+                    break
+                room = random.choice(rooms[1:])  # no en la habitacion inicial
+                ex, ey = celda_aleatoria_en(room)
+                if (ex, ey) in ocupadas:
+                    continue
+                if mapa[ey][ex] != TILE_FLOOR:
+                    continue
+                e = escalar_enemigo(base, nivel)
+                e["x"] = ex
+                e["y"] = ey
+                e["tipo"] = tipo
+                enemigos.append(e)
+                ocupadas.add((ex, ey))
+                break
+
+    items = []
+    # items: siempre 1 pocion, 1-2 oro, 30% arma, 30% armadura
+    def spawn_item(tipo):
+        for _intento in range(20):
+            room = random.choice(rooms)
+            ix, iy = celda_aleatoria_en(room)
+            if (ix, iy) in ocupadas or mapa[iy][ix] != TILE_FLOOR:
+                continue
+            items.append({"x": ix, "y": iy, "tipo": tipo})
+            ocupadas.add((ix, iy))
+            break
+
+    spawn_item("pocion")
+    for _ in range(random.randint(1, 3)):
+        spawn_item("oro")
+    if random.random() < 0.35:
+        spawn_item("arma")
+    if random.random() < 0.35:
+        spawn_item("armadura")
+
+    return {
+        "mapa": mapa,
+        "rooms": rooms,
+        "enemigos": enemigos,
+        "items": items,
+        "stairs": (escx, escy),
+        "player_start": (pjx, pjy),
+    }
+
+
+# ---------- estado del jugador ----------
+
+def nuevo_jugador():
+    return {
+        "x": 0, "y": 0,
+        "hp": 20, "hp_max": 20,
+        "atk": 3, "def": 1,
+        "xp": 0, "nivel": 1,
+        "oro": 0,
+    }
+
+
+def xp_para_subir(nivel):
+    return nivel * 50
+
+
+def subir_nivel_si(player, log):
+    while player["xp"] >= xp_para_subir(player["nivel"]):
+        player["xp"] -= xp_para_subir(player["nivel"])
+        player["nivel"] += 1
+        player["hp_max"] += 5
+        player["atk"] += 1
+        if player["nivel"] % 2 == 0:
+            player["def"] += 1
+        player["hp"] = player["hp_max"]
+        log.append(f"Subes al nivel {player['nivel']}! +5 HP max, +1 ATK.")
+
+
+# ---------- render ----------
+
+def render(estado, log, nivel_mazmorra):
+    frame = frame_nuevo()
+
+    # cabecera
+    titulo = f" MAZE BBS   Mazmorra nivel {nivel_mazmorra} "
+    pad_l = (COLS - len(titulo)) // 2
+    set_text(frame, ROW_TITLE, 0, "\u2550" * pad_l, "blancoB")
+    set_text(frame, ROW_TITLE, pad_l, titulo, "amarB", "bold")
+    set_text(frame, ROW_TITLE, pad_l + len(titulo), "\u2550" * (COLS - pad_l - len(titulo)), "blancoB")
+
+    # separador
+    set_text(frame, ROW_SEP1, 0, "\u2500" * COLS, "dim")
+
+    # mapa base
+    mapa = estado["mapa"]
+    for y in range(MAP_H):
+        for x in range(MAP_W):
+            if mapa[y][x] == TILE_WALL:
+                set_cell(frame, MAP_Y0 + y, MAP_X0 + x, "#", "dim")
+            else:
+                set_cell(frame, MAP_Y0 + y, MAP_X0 + x, ".", "dim")
+
+    # escaleras
+    esx, esy = estado["stairs"]
+    set_cell(frame, MAP_Y0 + esy, MAP_X0 + esx, ">", "amarB", "bold")
+
+    # items
+    for it in estado["items"]:
+        t = TIPOS_ITEM[it["tipo"]]
+        set_cell(frame, MAP_Y0 + it["y"], MAP_X0 + it["x"], t["ch"], t["col"], "bold")
+
+    # enemigos
+    for e in estado["enemigos"]:
+        set_cell(frame, MAP_Y0 + e["y"], MAP_X0 + e["x"], e["ch"] if len(e["ch"]) == 1 else e["ch"][0], e.get("col_render", TIPOS_ENEMIGO[e["tipo"]]["col"]), "bold")
+
+    # player
+    p = estado["player"]
+    set_cell(frame, MAP_Y0 + p["y"], MAP_X0 + p["x"], "@", "verdeB", "bold")
+
+    # separador stats
+    set_text(frame, ROW_SEP2, 0, "\u2500" * COLS, "dim")
+
+    # stats
+    hp_col = "verdeB" if p["hp"] > p["hp_max"] * 0.6 else ("amarB" if p["hp"] > p["hp_max"] * 0.3 else "rojoB")
+    stats = (
+        f" HP: {p['hp']}/{p['hp_max']}  ATK: {p['atk']}  DEF: {p['def']}  "
+        f"XP: {p['xp']}/{xp_para_subir(p['nivel'])}  Lvl: {p['nivel']}  Oro: {p['oro']}"
+    )
+    set_text(frame, ROW_STATS, 0, stats, "blanco")
+    # recolorear HP
+    hp_str = f"{p['hp']}/{p['hp_max']}"
+    set_text(frame, ROW_STATS, 5, hp_str, hp_col, "bold")
+    # recolorear oro
+    oro_col_x = stats.index("Oro:") + 5
+    set_text(frame, ROW_STATS, oro_col_x, str(p['oro']), "amarB", "bold")
+
+    # separador log
+    set_text(frame, ROW_SEP3, 0, "\u2500" * COLS, "dim")
+
+    # log (ultima linea)
+    msg = log[-1] if log else ""
+    msg = msg[:COLS - 2]
+    set_text(frame, ROW_LOG, 1, msg, "cyanB")
+
+    # separador ctrl
+    set_text(frame, ROW_SEP4, 0, "\u2500" * COLS, "dim")
+
+    # controles
+    ctrl = " WASD/flechas mover (bump=atacar)  .  esperar  >  bajar escaleras  Q  salir "
+    set_text(frame, ROW_CTRL, (COLS - len(ctrl)) // 2, ctrl, "dim")
+
+    flush_frame(frame)
+
+
+# ---------- movimiento y combate ----------
+
+def en_mapa(x, y):
+    return 0 <= x < MAP_W and 0 <= y < MAP_H
+
+
+def enemigo_en(estado, x, y):
+    for e in estado["enemigos"]:
+        if e["x"] == x and e["y"] == y:
+            return e
+    return None
+
+
+def item_en(estado, x, y):
+    for it in estado["items"]:
+        if it["x"] == x and it["y"] == y:
+            return it
+    return None
+
+
+def atacar_jugador_a_enemigo(estado, enemigo, log):
+    p = estado["player"]
+    dano = max(1, p["atk"] - enemigo["def"])
+    enemigo["hp"] -= dano
+    if enemigo["hp"] <= 0:
+        xp_ganado = enemigo["xp"]
+        lo, hi = TIPOS_ENEMIGO[enemigo["tipo"]]["oro"]
+        oro = random.randint(lo, hi)
+        p["xp"] += xp_ganado
+        p["oro"] += oro
+        log.append(f"Matas al {enemigo['tipo']}: +{xp_ganado} XP, +{oro} oro.")
+        estado["enemigos"].remove(enemigo)
+        subir_nivel_si(p, log)
+    else:
+        log.append(f"Atacas al {enemigo['tipo']}: -{dano} HP. ({enemigo['hp']}/{enemigo['hp_max']})")
+
+
+def atacar_enemigo_a_jugador(estado, enemigo, log):
+    p = estado["player"]
+    dano = max(1, enemigo["atk"] - p["def"])
+    p["hp"] -= dano
+    log.append(f"El {enemigo['tipo']} te ataca: -{dano} HP.")
+
+
+def recoger_item(estado, it, log):
+    p = estado["player"]
+    tipo = it["tipo"]
+    if tipo == "oro":
+        ganado = random.randint(5, 30)
+        p["oro"] += ganado
+        log.append(f"Coges {ganado} de oro.")
+    elif tipo == "pocion":
+        cura = 10
+        p["hp"] = min(p["hp_max"], p["hp"] + cura)
+        log.append(f"Bebes una pocion. +{cura} HP.")
+    elif tipo == "arma":
+        p["atk"] += 1
+        log.append(f"Nueva arma! +1 ATK (ahora {p['atk']}).")
+    elif tipo == "armadura":
+        p["def"] += 1
+        log.append(f"Nueva armadura! +1 DEF (ahora {p['def']}).")
+    estado["items"].remove(it)
+
+
+def mover_jugador(estado, dx, dy, log):
+    p = estado["player"]
+    nx, ny = p["x"] + dx, p["y"] + dy
+    if not en_mapa(nx, ny):
+        return False
+    if estado["mapa"][ny][nx] == TILE_WALL:
+        return False
+    enemigo = enemigo_en(estado, nx, ny)
+    if enemigo:
+        atacar_jugador_a_enemigo(estado, enemigo, log)
+        return True
+    p["x"], p["y"] = nx, ny
+    it = item_en(estado, nx, ny)
+    if it:
+        recoger_item(estado, it, log)
+    return True
+
+
+def adyacente(a_x, a_y, b_x, b_y):
+    return abs(a_x - b_x) <= 1 and abs(a_y - b_y) <= 1 and (a_x, a_y) != (b_x, b_y)
+
+
+def turno_enemigos(estado, log):
+    p = estado["player"]
+    for e in list(estado["enemigos"]):
+        if e["hp"] <= 0:
+            continue
+        if adyacente(e["x"], e["y"], p["x"], p["y"]):
+            atacar_enemigo_a_jugador(estado, e, log)
+            if p["hp"] <= 0:
+                return
+            continue
+        dist = abs(e["x"] - p["x"]) + abs(e["y"] - p["y"])
+        if dist > 8:
+            continue
+        # mover hacia el jugador
+        dx = 1 if p["x"] > e["x"] else (-1 if p["x"] < e["x"] else 0)
+        dy = 1 if p["y"] > e["y"] else (-1 if p["y"] < e["y"] else 0)
+        if abs(p["x"] - e["x"]) > abs(p["y"] - e["y"]):
+            dy = 0
+        else:
+            dx = 0
+        nx, ny = e["x"] + dx, e["y"] + dy
+        if not en_mapa(nx, ny):
+            continue
+        if estado["mapa"][ny][nx] == TILE_WALL:
+            continue
+        if (nx, ny) == (p["x"], p["y"]):
+            continue
+        if any(o is not e and o["x"] == nx and o["y"] == ny for o in estado["enemigos"]):
+            continue
+        e["x"], e["y"] = nx, ny
+
+
+# ---------- scores y splash ----------
+
+def cargar_scores():
+    if not os.path.exists(SCORES_FILE):
+        return []
+    try:
+        with open(SCORES_FILE, "r", encoding="utf-8") as f:
+            out = []
+            for linea in f:
+                parts = linea.strip().split(";")
+                if len(parts) == 4:
+                    nombre, puntos, nivel, fecha = parts
+                    try:
+                        out.append((nombre, int(puntos), int(nivel), fecha))
+                    except ValueError:
+                        continue
+            return sorted(out, key=lambda x: -x[1])[:MAX_TOP]
+    except OSError:
+        return []
+
+
+def guardar_score(nombre, puntos, nivel):
+    scores = cargar_scores()
+    scores.append((nombre, puntos, nivel, date.today().isoformat()))
+    scores = sorted(scores, key=lambda x: -x[1])[:MAX_TOP]
+    try:
+        with open(SCORES_FILE, "w", encoding="utf-8") as f:
+            for n, p, nv, fe in scores:
+                f.write(f"{n};{p};{nv};{fe}\n")
+    except OSError:
+        pass
+    return scores
+
+
+def es_top(puntos):
+    if puntos <= 0:
+        return False
+    scores = cargar_scores()
+    if len(scores) < MAX_TOP:
+        return True
+    return puntos > scores[-1][1]
+
+
+LOGO_MAZE = [
+    "\u2588\u2588\u2588\u2557   \u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557",
+    "\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u255A\u2550\u2550\u2588\u2588\u2588\u2554\u255D\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255D",
+    "\u2588\u2588\u2554\u2588\u2588\u2588\u2588\u2554\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551  \u2588\u2588\u2588\u2554\u255D \u2588\u2588\u2588\u2588\u2588\u2557  ",
+    "\u2588\u2588\u2551\u255A\u2588\u2588\u2554\u255D\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2551 \u2588\u2588\u2588\u2554\u255D  \u2588\u2588\u2554\u2550\u2550\u255D  ",
+    "\u2588\u2588\u2551 \u255A\u2550\u255D \u2588\u2588\u2551\u2588\u2588\u2551  \u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557",
+    "\u255A\u2550\u255D     \u255A\u2550\u255D\u255A\u2550\u255D  \u255A\u2550\u255D\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u255D\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u255D",
+]
+
+LOGO_BBS = [
+    "\u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557",
+    "\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255D",
+    "\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255D\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255D\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557",
+    "\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u255A\u2550\u2550\u2550\u2550\u2588\u2588\u2551",
+    "\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255D\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255D\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551",
+    "\u255A\u2550\u2550\u2550\u2550\u2550\u255D \u255A\u2550\u2550\u2550\u2550\u2550\u255D \u255A\u2550\u2550\u2550\u2550\u2550\u2550\u255D",
+]
+
+
+def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
+    pad = ancho - len(texto)
+    pad_l = pad // 2
+    pad_r = pad - pad_l
+    cuerpo = " " * pad_l + c(texto, color_txt) + " " * pad_r if texto else " " * ancho
+    return c("\u2551", color_caja) + cuerpo + c("\u2551", color_caja)
+
+
+def splash():
+    cls()
+    sys.stdout.write(show_cursor(True))
+    ancho = 60
+    print()
+    print(c("\u2554" + "\u2550" * ancho + "\u2557", "verdeB"))
+    print(_caja_linea_splash("", ancho, "blanco"))
+    for ln in LOGO_MAZE:
+        print(_caja_linea_splash(ln, ancho, "amarB"))
+    print(_caja_linea_splash("", ancho, "blanco"))
+    for ln in LOGO_BBS:
+        print(_caja_linea_splash(ln, ancho, "amarB"))
+    print(_caja_linea_splash("", ancho, "blanco"))
+    print(_caja_linea_splash("Roguelike turn-based de un jugador", ancho, "cyanB"))
+    print(_caja_linea_splash("Baja niveles, mata bichos, coge loot.", ancho, "blanco"))
+    print(_caja_linea_splash("", ancho, "blanco"))
+    print(c("\u255A" + "\u2550" * ancho + "\u255D", "verdeB"))
+    msg = "Pulsa Enter para empezar..."
+    print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
+    try:
+        input("")
+    except EOFError:
+        pass
+
+
+def pantalla_final(player, nivel_mazmorra):
+    sys.stdout.write(show_cursor(True))
+    print()
+    ancho = 50
+    margen = " " * ((COLS - (ancho + 2)) // 2)
+    linea = "\u2550" * ancho
+    lado = c("\u2551", "rojoB")
+    puntos = player["oro"] + player["xp"] * 2
+
+    def fila_centrada(texto, *estilos):
+        pad_total = ancho - len(texto)
+        pad_l = pad_total // 2
+        pad_r = pad_total - pad_l
+        return margen + lado + " " * pad_l + c(texto, *estilos) + " " * pad_r + lado
+
+    def fila_kv(label, val, col):
+        prefijo = f"  {label}"
+        plano = prefijo + val
+        pad = ancho - len(plano)
+        return margen + lado + prefijo + c(val, col, "bold") + " " * pad + lado
+
+    print(margen + c("\u2554" + linea + "\u2557", "rojoB"))
+    print(fila_centrada("HAS MUERTO", "bold"))
+    print(margen + c("\u2560" + linea + "\u2563", "rojoB"))
+    print(fila_kv("Mazmorra nivel : ", str(nivel_mazmorra).rjust(20), "amarB"))
+    print(fila_kv("Nivel jugador  : ", str(player["nivel"]).rjust(20), "amarB"))
+    print(fila_kv("XP acumulado   : ", str(player["xp"]).rjust(20), "cyanB"))
+    print(fila_kv("Oro            : ", str(player["oro"]).rjust(20), "amarB"))
+    print(fila_kv("Puntuacion     : ", str(puntos).rjust(20), "verdeB"))
+    print(margen + c("\u255A" + linea + "\u255D", "rojoB"))
+    print()
+
+    if es_top(puntos):
+        print(margen + c("  [ENTRAS EN EL TOP 10]", "amarB", "bold"))
+        print()
+        nombre = ""
+        while not nombre:
+            try:
+                raw = input(margen + "  Iniciales (3 letras): ").strip().upper()
+            except EOFError:
+                raw = "AAA"
+            nombre = "".join(ch for ch in raw if ch.isalpha())[:3].ljust(3, "A")
+        scores = guardar_score(nombre, puntos, nivel_mazmorra)
+    else:
+        scores = cargar_scores()
+
+    print()
+    print(margen + c("  TOP 10".ljust(ancho), "bold"))
+    print(margen + c("\u2500" * ancho, "dim"))
+    for i, (n, p, nv, fe) in enumerate(scores, 1):
+        color = "amarB" if p == puntos else "blanco"
+        print(margen + f"  {i:>2}. {c(n, color, 'bold')}  {c(str(p).rjust(6), color)}  Nv.{nv:<2}  {c(fe, 'dim')}")
+    print()
+    try:
+        input(margen + c("  Pulsa Enter para salir...", "dim"))
+    except EOFError:
+        pass
+
+
+# ---------- main ----------
+
+def jugar():
+    player = nuevo_jugador()
+    nivel_mazmorra = 1
+    estado = generar_mazmorra(nivel_mazmorra)
+    player["x"], player["y"] = estado["player_start"]
+    estado["player"] = player
+    log = ["Bienvenido a la mazmorra."]
+
+    cls()
+    sys.stdout.write(show_cursor(False))
+    render(estado, log, nivel_mazmorra)
+
+    while player["hp"] > 0:
+        tecla = leer_tecla()
+        dx, dy = 0, 0
+        accion = False
+        bajar = False
+        if tecla in ("w", "W", "\x1b[A"):
+            dy = -1
+        elif tecla in ("s", "S", "\x1b[B"):
+            dy = 1
+        elif tecla in ("a", "A", "\x1b[D"):
+            dx = -1
+        elif tecla in ("d", "D", "\x1b[C"):
+            dx = 1
+        elif tecla in (".", " "):
+            accion = True
+        elif tecla in (">",):
+            bajar = True
+        elif tecla in ("q", "Q", "\x03"):
+            return player, nivel_mazmorra
+        else:
+            continue
+
+        if bajar:
+            if (player["x"], player["y"]) == estado["stairs"]:
+                nivel_mazmorra += 1
+                estado = generar_mazmorra(nivel_mazmorra)
+                player["x"], player["y"] = estado["player_start"]
+                estado["player"] = player
+                log.append(f"Bajas al nivel {nivel_mazmorra} de la mazmorra.")
+                render(estado, log, nivel_mazmorra)
+                continue
+            else:
+                log.append("No hay escaleras aqui.")
+                render(estado, log, nivel_mazmorra)
+                continue
+
+        if dx != 0 or dy != 0:
+            movido = mover_jugador(estado, dx, dy, log)
+            if not movido:
+                render(estado, log, nivel_mazmorra)
+                continue
+            accion = True
+
+        if accion:
+            if player["hp"] > 0:
+                turno_enemigos(estado, log)
+        render(estado, log, nivel_mazmorra)
+
+    return player, nivel_mazmorra
+
+
+def main():
+    if not TERMIOS_OK:
+        print("Este terminal no soporta el modo requerido (termios).")
+        return
+    old = entrar_cbreak()
+    if old is None:
+        print("No se pudo entrar en modo cbreak. Maze necesita un TTY.")
+        return
+    try:
+        restaurar_terminal(old)
+        splash()
+        while True:
+            old2 = entrar_cbreak()
+            player, nivel_mazmorra = jugar()
+            restaurar_terminal(old2)
+            sys.stdout.write(show_cursor(True))
+            sys.stdout.flush()
+            if player["hp"] <= 0:
+                pantalla_final(player, nivel_mazmorra)
+            try:
+                raw = input("\n  Otra partida? [S/N]: ").strip().upper()
+            except EOFError:
+                raw = "N"
+            if not raw.startswith("S"):
+                break
+    except KeyboardInterrupt:
+        pass
+    finally:
+        try:
+            restaurar_terminal(old)
+        except Exception:
+            pass
+        sys.stdout.write(show_cursor(True))
+        sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()

@@ -6,8 +6,9 @@ Todos comparten el mismo patron:
 
 - Un unico `.py` por juego, solo con la libreria estandar.
 - UI 80x24 con caracteres CP437 (bordes dobles, bloques, sombras).
-- Colores ANSI crudos embebidos en los strings.
+- Colores ANSI clasicos (SGR 30-37 + bold) — compatibles con NetRunner, MuffinTerm y demas clientes BBS.
 - `stdout` reconfigurado a `cp437` para que Mystic los pinte correctamente.
+- **Shadow buffer** en los juegos con render frecuente: solo se emiten las celdas que cambian.
 - Top 10 persistente en un `*_scores.txt` junto al script.
 
 ## Juegos
@@ -44,11 +45,35 @@ Wordle en espanol: adivina la palabra de 5 letras en 6 intentos. Feedback por le
 python3 wordle/wordle.py
 ```
 
+### [buscaminas/](buscaminas/) - Buscaminas BBS
+
+El Buscaminas clasico. Cursor con WASD/flechas, espacio para revelar, F para bandera. Tres dificultades: Principiante (9x9), Intermedio (16x16), Experto (30x16). Primera casilla revelada nunca es mina. Shadow buffer para render eficiente.
+
+```
+python3 buscaminas/buscaminas.py
+```
+
+### [maze/](maze/) - Maze BBS
+
+Roguelike turn-based de un jugador. Mazmorra procedural (6-10 habitaciones + pasillos), 4 tipos de enemigos escalados por nivel (rata, goblin, orco, troll), 4 tipos de items (oro, pocion, arma, armadura). Combate bump-to-attack, subes de nivel con XP, bajas escaleras a mazmorras mas profundas. Sin limite.
+
+```
+python3 maze/maze.py
+```
+
+### [bbsatro/](bbsatro/) - BBSATRO (balatro.py)
+
+Deckbuilder inspirado en Balatro. Juegas manos de poker para superar una puntuacion objetivo cada ronda. 52 cartas, 8 en mano, seleccionas 1-5 y juegas con P o descartas con D. Sistema de antes con 3 rondas (Pequena, Grande, Boss) y objetivos exponenciales. Fase 1 sin jokers.
+
+```
+python3 bbsatro/balatro.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
 - Terminal ANSI/CP437. En Mystic se lanza como door externo (`python3 ruta/juego.py`).
-- `snake.py` requiere TTY con `termios` (Unix / Mystic via PTY).
+- `snake.py`, `buscaminas.py`, `maze.py` y `balatro.py` requieren TTY con `termios` (Unix / Mystic via PTY) para input char-a-char.
 
 ## Deploy en Mystic
 
@@ -60,12 +85,15 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 
 ## Estado de cada juego
 
-| Juego        | Mecanica | Input     | Probado en Mystic |
-|--------------|----------|-----------|-------------------|
-| DopePython   | turn-based | line-mode | si, OK |
-| Typespeed BBS | real-time scroll | line-mode + `select` | si, OK |
-| Snake BBS    | real-time | char-mode (`termios`) | pendiente |
-| Wordle BBS   | turn-based | line-mode | pendiente |
+| Juego          | Mecanica              | Input         | Probado en Mystic |
+|----------------|-----------------------|---------------|-------------------|
+| DopePython     | turn-based            | line-mode     | si, OK            |
+| Typespeed BBS  | real-time scroll      | line-mode + `select` | si, OK     |
+| Snake BBS      | real-time             | char-mode     | si, OK            |
+| Wordle BBS     | turn-based            | line-mode     | si, OK            |
+| Buscaminas BBS | turn-based            | char-mode     | si, OK            |
+| Maze BBS       | turn-based roguelike  | char-mode     | en pruebas        |
+| BBSATRO        | turn-based cartas     | char-mode     | en pruebas        |
 
 ## Licencia
 
