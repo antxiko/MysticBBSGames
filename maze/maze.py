@@ -42,6 +42,8 @@ ROW_CTRL = ROW_SEP4 + 1
 TILE_WALL = 0
 TILE_FLOOR = 1
 
+FOV_RADIO = 8
+
 COLORES = {
     "rojo":    "\x1b[31m",
     "verde":   "\x1b[32m",
@@ -391,6 +393,8 @@ def generar_mazmorra(nivel):
         "trampas": trampas,
         "stairs": stairs,
         "player_start": (pjx, pjy),
+        "visto": set(),          # celdas que hemos visto alguna vez
+        "mapa_revelado": False,  # scroll de mapeo lo pone True
     }
 
 
@@ -440,37 +444,60 @@ def render(estado, log, nivel_mazmorra):
     # separador
     set_text(frame, ROW_SEP1, 0, "\u2500" * COLS, "dim")
 
-    # mapa base
+    # FOV
     mapa = estado["mapa"]
+    p = estado["player"]
+    visible = calcular_fov(mapa, p["x"], p["y"], FOV_RADIO)
+    visto = estado["visto"]
+    visto |= visible
+    revelado = estado.get("mapa_revelado", False)
+
+    # mapa base segun visibilidad
     for y in range(MAP_H):
         for x in range(MAP_W):
+            en_vista = (x, y) in visible
+            en_memoria = (x, y) in visto or revelado
             if mapa[y][x] == TILE_WALL:
-                set_cell(frame, MAP_Y0 + y, MAP_X0 + x, "#", "dim")
+                if en_vista:
+                    set_cell(frame, MAP_Y0 + y, MAP_X0 + x, "#", "blanco")
+                elif en_memoria:
+                    set_cell(frame, MAP_Y0 + y, MAP_X0 + x, "#", "dim")
+                # else: espacio (no dibujar)
             else:
-                set_cell(frame, MAP_Y0 + y, MAP_X0 + x, ".", "dim")
+                if en_vista:
+                    set_cell(frame, MAP_Y0 + y, MAP_X0 + x, ".", "dim")
+                # fuera de vista el suelo no se dibuja (solo muros se recuerdan)
 
-    # trampas descubiertas
+    # trampas descubiertas (solo si visibles o en memoria)
     for t in estado.get("trampas", []):
-        if t["descubierta"]:
+        if not t["descubierta"]:
+            continue
+        if (t["x"], t["y"]) in visto or revelado:
             td = TIPOS_TRAMPA[t["tipo"]]
-            set_cell(frame, MAP_Y0 + t["y"], MAP_X0 + t["x"], td["ch"], td["col"], "bold")
+            col = td["col"] if (t["x"], t["y"]) in visible else "dim"
+            set_cell(frame, MAP_Y0 + t["y"], MAP_X0 + t["x"], td["ch"], col, "bold")
 
-    # escaleras (si existen en este nivel)
+    # escaleras (solo si las hemos visto)
     if estado.get("stairs"):
         esx, esy = estado["stairs"]
-        set_cell(frame, MAP_Y0 + esy, MAP_X0 + esx, ">", "amarB", "bold")
+        if (esx, esy) in visto or revelado:
+            col = "amarB" if (esx, esy) in visible else "dim"
+            set_cell(frame, MAP_Y0 + esy, MAP_X0 + esx, ">", col, "bold")
 
-    # items
+    # items (solo visibles ahora)
     for it in estado["items"]:
+        if (it["x"], it["y"]) not in visible:
+            continue
         t = TIPOS_ITEM[it["tipo"]]
         set_cell(frame, MAP_Y0 + it["y"], MAP_X0 + it["x"], t["ch"], t["col"], "bold")
 
-    # enemigos
+    # enemigos (solo visibles ahora, no recordados)
     for e in estado["enemigos"]:
-        set_cell(frame, MAP_Y0 + e["y"], MAP_X0 + e["x"], e["ch"] if len(e["ch"]) == 1 else e["ch"][0], e.get("col_render", TIPOS_ENEMIGO[e["tipo"]]["col"]), "bold")
+        if (e["x"], e["y"]) not in visible:
+            continue
+        set_cell(frame, MAP_Y0 + e["y"], MAP_X0 + e["x"], e["ch"], TIPOS_ENEMIGO[e["tipo"]]["col"], "bold")
 
     # player
-    p = estado["player"]
     col_player = "amarB" if p.get("amuleto") else "verdeB"
     set_cell(frame, MAP_Y0 + p["y"], MAP_X0 + p["x"], "@", col_player, "bold")
 
@@ -553,6 +580,42 @@ def render_inventario(estado):
 
 def en_mapa(x, y):
     return 0 <= x < MAP_W and 0 <= y < MAP_H
+
+
+def linea_libre(mapa, x1, y1, x2, y2):
+    """Bresenham: devuelve True si no hay muro entre (x1,y1) y (x2,y2).
+    El destino puede ser muro sin bloquear (vemos el propio muro)."""
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    sx = 1 if x1 < x2 else -1
+    sy = 1 if y1 < y2 else -1
+    err = dx - dy
+    x, y = x1, y1
+    while True:
+        if (x, y) == (x2, y2):
+            return True
+        if (x, y) != (x1, y1) and mapa[y][x] == TILE_WALL:
+            return False
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x += sx
+        if e2 < dx:
+            err += dx
+            y += sy
+
+
+def calcular_fov(mapa, px, py, radio=FOV_RADIO):
+    """Devuelve set de (x, y) visibles desde (px, py)."""
+    visible = {(px, py)}
+    r2 = radio * radio
+    for y in range(max(0, py - radio), min(MAP_H, py + radio + 1)):
+        for x in range(max(0, px - radio), min(MAP_W, px + radio + 1)):
+            if (x - px) ** 2 + (y - py) ** 2 > r2:
+                continue
+            if linea_libre(mapa, px, py, x, y):
+                visible.add((x, y))
+    return visible
 
 
 def enemigo_en(estado, x, y):

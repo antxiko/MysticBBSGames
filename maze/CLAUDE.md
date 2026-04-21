@@ -85,6 +85,15 @@ Al descubrirlas aparecen como `^` coloreado.
 - Nivel 10 (Boss): spawn del Dragon + amuleto, sin escaleras hacia abajo.
 - Tras conseguir el amuleto, las escaleras suben (`<`): cada uso te sube un nivel. Llegar al nivel 0 = victoria.
 
+## Field of View (FOV)
+
+- Radio de vision: 8 casillas.
+- Line-of-sight tipo Bresenham: los muros bloquean la vista. Solo ves lo que te da linea limpia.
+- Memoria: los muros que has visto quedan en `dim` aunque te alejes (recuerdas la forma). Los suelos no se recuerdan (para no saturar).
+- Enemigos y items solo visibles cuando estan en tu vista actual. Se "pierden" de la pantalla al salir del radio (no los recuerdas).
+- Trampas descubiertas: si las has pisado y siguen en tu memoria, se muestran (en dim si no las tienes delante).
+- Scroll de mapeo revela TODO el terreno. Los enemigos e items siguen requiriendo verlos para pintarse.
+
 ## Mecanica
 
 ### Combate
