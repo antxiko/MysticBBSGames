@@ -77,6 +77,14 @@ Clon del puzzle 2048. Tablero 4x4, deslizas con WASD/flechas para combinar baldo
 python3 2048/2048.py
 ```
 
+### [puyopuyo/](puyopuyo/) - Puyo Puyo BBS
+
+Clon de Puyo Puyo. Tablero 6x12 donde caen pares de puyos de 5 colores. 4 o mas del mismo color conectados explotan; al caer puyos sobre los huecos puedes encadenar explosiones, y cada eslabon multiplica la puntuacion. Rotacion, soft drop, hard drop, niveles que aceleran la caida.
+
+```
+python3 puyopuyo/puyopuyo.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
@@ -103,6 +111,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Maze BBS       | turn-based roguelike  | char-mode     | en pruebas        |
 | BBSATRO        | turn-based cartas     | char-mode     | en pruebas        |
 | 2048 BBS       | turn-based puzzle     | char-mode     | en pruebas        |
+| Puyo Puyo BBS  | real-time puzzle      | char-mode     | en pruebas        |
 
 ## Licencia
 
