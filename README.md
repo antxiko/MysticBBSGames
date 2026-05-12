@@ -85,6 +85,14 @@ Clon de Puyo Puyo. Tablero 6x12 donde caen pares de puyos de 5 colores. 4 o mas 
 python3 puyopuyo/puyopuyo.py
 ```
 
+### [sokoban/](sokoban/) - Sokoban BBS
+
+Clon de Sokoban. 10 niveles hechos a mano de dificultad creciente. Empujas cajas a sus marcas (nunca tirar). Undo ilimitado, reset y saltar nivel. Puntuacion = 100 por nivel - movimientos (minimo 10).
+
+```
+python3 sokoban/sokoban.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
@@ -112,6 +120,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | BBSATRO        | turn-based cartas     | char-mode     | en pruebas        |
 | 2048 BBS       | turn-based puzzle     | char-mode     | en pruebas        |
 | Puyo Puyo BBS  | real-time puzzle      | char-mode     | en pruebas        |
+| Sokoban BBS    | turn-based puzzle     | char-mode     | en pruebas        |
 
 ## Licencia
 
