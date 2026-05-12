@@ -111,6 +111,10 @@ def flush_frame(frame):
     out = []
     for y in range(SHADOW_ROWS):
         for x in range(SHADOW_COLS):
+            # Saltar la esquina inferior-derecha: escribir ahi provoca auto-wrap
+            # del terminal a una fila que no existe y hace scroll de toda la pantalla.
+            if y == SHADOW_ROWS - 1 and x == SHADOW_COLS - 1:
+                continue
             if frame[y][x] != _shadow[y][x]:
                 out.append(at(y + 1, x + 1) + frame[y][x])
                 _shadow[y][x] = frame[y][x]
@@ -372,9 +376,6 @@ def ganado(state):
 # ---------- render ----------
 
 def render(state, nivel_idx, nivel_nombre, score_total, movs, msg=None):
-    # Sokoban es turn-based: full redraw cada turno para eliminar artefactos
-    # de shadow buffer. Coste en bytes pero zero ambiguedad visual.
-    cls()
     frame = frame_nuevo()
 
     # titulo

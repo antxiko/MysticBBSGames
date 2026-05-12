@@ -138,6 +138,10 @@ def flush_frame(frame):
     out = []
     for y in range(SHADOW_ROWS):
         for x in range(SHADOW_COLS):
+            # Saltar la esquina inferior-derecha: escribir ahi provoca auto-wrap
+            # del terminal a una fila que no existe y hace scroll.
+            if y == SHADOW_ROWS - 1 and x == SHADOW_COLS - 1:
+                continue
             if frame[y][x] != _shadow[y][x]:
                 out.append(at(y + 1, x + 1) + frame[y][x])
                 _shadow[y][x] = frame[y][x]
