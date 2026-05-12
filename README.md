@@ -93,6 +93,22 @@ Clon de Sokoban. 10 niveles hechos a mano de dificultad creciente. Empujas cajas
 python3 sokoban/sokoban.py
 ```
 
+### [breakout/](breakout/) - Breakout BBS
+
+Clon de Breakout/Arkanoid. Paleta con direccion continua (A/D arranca movimiento, pulsar otra vez para), bola que rebota y muro de 228 ladrillos coloreados por fila (50/40/30/20/15/10 puntos). 3 vidas y niveles cada vez mas rapidos.
+
+```
+python3 breakout/breakout.py
+```
+
+### [limonada/](limonada/) - Limonada BBS
+
+Clon en castellano del clasico *Lemonade Stand*. Llevas un puesto de limonada durante 30 dias: clima, decisiones de cuantos vasos preparar, precio y publicidad, eventos aleatorios. Empiezas con $2 y compites por la caja mas grande al final.
+
+```
+python3 limonada/limonada.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
@@ -121,6 +137,8 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | 2048 BBS       | turn-based puzzle     | char-mode     | en pruebas        |
 | Puyo Puyo BBS  | real-time puzzle      | char-mode     | en pruebas        |
 | Sokoban BBS    | turn-based puzzle     | char-mode     | en pruebas        |
+| Breakout BBS   | real-time arcade      | char-mode     | en pruebas        |
+| Limonada BBS   | turn-based sim        | line-mode     | en pruebas        |
 
 ## Licencia
 
