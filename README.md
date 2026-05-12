@@ -69,11 +69,19 @@ Deckbuilder inspirado en Balatro. Juegas manos de poker para superar una puntuac
 python3 bbsatro/balatro.py
 ```
 
+### [2048/](2048/) - 2048 BBS
+
+Clon del puzzle 2048. Tablero 4x4, deslizas con WASD/flechas para combinar baldosas de potencias de 2. Cada baldosa con su color (blanco -> amarillo -> rojo -> magenta -> verde brillante a partir de 2048). Bandera de victoria al llegar a 2048 pero puedes seguir jugando.
+
+```
+python3 2048/2048.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
 - Terminal ANSI/CP437. En Mystic se lanza como door externo (`python3 ruta/juego.py`).
-- `snake.py`, `buscaminas.py`, `maze.py` y `balatro.py` requieren TTY con `termios` (Unix / Mystic via PTY) para input char-a-char.
+- `snake.py`, `buscaminas.py`, `maze.py`, `balatro.py` y `2048.py` requieren TTY con `termios` (Unix / Mystic via PTY) para input char-a-char.
 
 ## Deploy en Mystic
 
@@ -94,6 +102,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Buscaminas BBS | turn-based            | char-mode     | si, OK            |
 | Maze BBS       | turn-based roguelike  | char-mode     | en pruebas        |
 | BBSATRO        | turn-based cartas     | char-mode     | en pruebas        |
+| 2048 BBS       | turn-based puzzle     | char-mode     | en pruebas        |
 
 ## Licencia
 

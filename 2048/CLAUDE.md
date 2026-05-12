@@ -4,10 +4,10 @@ Clon del puzzle clasico 2048 para Mystic BBS. Combina baldosas de potencias de 2
 
 ## Alcance
 
-- Un solo `dosmil.py` (el nombre del fichero evita empezar por digito; el juego se muestra como "2048 BBS"). Solo stdlib.
+- Un solo `2048.py`. Solo stdlib.
 - Char-mode con `termios`.
 - Shadow buffer para diff-rendering.
-- Top 10 en `dosmil_scores.txt`.
+- Top 10 en `2048_scores.txt`.
 
 ## Mecanica
 
