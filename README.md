@@ -109,6 +109,14 @@ Clon en castellano del clasico *Lemonade Stand*. Llevas un puesto de limonada du
 python3 limonada/limonada.py
 ```
 
+### [catacumba/](catacumba/) - Catacumba BBS
+
+**Dungeon pseudo-3D con raycasting puro en ASCII**. Mazmorra 12x12 que recorres en primera persona; las paredes se renderizan con shading por distancia (`█▓▒░`) y un mini-mapa en la esquina te ayuda. Busca la salida `E`. Una locura tecnica que aguanta gracias al shadow buffer diferencial.
+
+```
+python3 catacumba/catacumba.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
@@ -139,6 +147,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Sokoban BBS    | turn-based puzzle     | char-mode     | en pruebas        |
 | Breakout BBS   | real-time arcade      | char-mode     | en pruebas        |
 | Limonada BBS   | turn-based sim        | line-mode     | en pruebas        |
+| Catacumba BBS  | real-time pseudo-3D   | char-mode     | en pruebas        |
 
 ## Licencia
 
