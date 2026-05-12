@@ -138,6 +138,10 @@ def entrar_cbreak():
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         tty.setcbreak(fd)
+        # forzar echo off explicitamente (algunas versiones de tty.setcbreak lo dejan on)
+        mode = termios.tcgetattr(fd)
+        mode[3] &= ~termios.ECHO
+        termios.tcsetattr(fd, termios.TCSAFLUSH, mode)
         return old
     except Exception:
         return None
@@ -368,6 +372,9 @@ def ganado(state):
 # ---------- render ----------
 
 def render(state, nivel_idx, nivel_nombre, score_total, movs, msg=None):
+    # Sokoban es turn-based: full redraw cada turno para eliminar artefactos
+    # de shadow buffer. Coste en bytes pero zero ambiguedad visual.
+    cls()
     frame = frame_nuevo()
 
     # titulo
