@@ -112,6 +112,6 @@ Matar al Dragon, coger el Amuleto, volver a la superficie (nivel 0). Bonus +1000
 
 - `W A S D` o flechas: mover (bump a enemigo = atacar).
 - `.` / `espacio`: esperar un turno.
-- `>` / `<`: usar escaleras (baja sin amuleto, sube con amuleto).
-- `i`: abrir inventario. Dentro, `1-9` para usar item, `ESC`/`Q` para cerrar.
+- `E`: usar escaleras (baja sin amuleto, sube con amuleto).
+- `I`: abrir inventario. Dentro, `1-9` para usar item, `ESC`/`Q` para cerrar.
 - `Q`: salir de la partida.

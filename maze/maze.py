@@ -10,6 +10,24 @@ try:
 except Exception:
     pass
 
+
+def configurar_backspace():
+    """Hace que ^H (0x08) se interprete como erase en input() de modo linea.
+    Muchos clientes BBS envian ^H al pulsar Backspace; sin esto, queda
+    en el buffer como caracter literal."""
+    try:
+        import termios
+        fd = sys.stdin.fileno()
+        attrs = termios.tcgetattr(fd)
+        attrs[6][termios.VERASE] = b"\x08"
+        termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    except Exception:
+        pass
+
+
+configurar_backspace()
+
+
 try:
     import termios
     import tty
@@ -532,7 +550,7 @@ def render(estado, log, nivel_mazmorra):
     set_text(frame, ROW_SEP4, 0, "\u2500" * COLS, "dim")
 
     # controles
-    ctrl = " WASD mover    .  esperar    > escaleras    i inventario    Q  salir "
+    ctrl = " WASD mover    .  esperar    E escaleras    I inventario    Q  salir "
     set_text(frame, ROW_CTRL, (COLS - len(ctrl)) // 2, ctrl, "dim")
 
     flush_frame(frame)
@@ -1034,7 +1052,7 @@ def jugar():
             dx = 1
         elif tecla in (".", " "):
             accion = True
-        elif tecla in (">", "<"):
+        elif tecla in ("e", "E"):
             usar_escaleras = True
         elif tecla in ("i", "I"):
             cls()  # reset shadow para la pantalla modal

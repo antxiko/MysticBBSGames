@@ -11,6 +11,24 @@ try:
 except Exception:
     pass
 
+
+def configurar_backspace():
+    """Hace que ^H (0x08) se interprete como erase en input() de modo linea.
+    Muchos clientes BBS envian ^H al pulsar Backspace; sin esto, queda
+    en el buffer como caracter literal."""
+    try:
+        import termios
+        fd = sys.stdin.fileno()
+        attrs = termios.tcgetattr(fd)
+        attrs[6][termios.VERASE] = b"\x08"
+        termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    except Exception:
+        pass
+
+
+configurar_backspace()
+
+
 try:
     import termios
     import tty
