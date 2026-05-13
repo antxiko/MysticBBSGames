@@ -111,10 +111,26 @@ python3 limonada/limonada.py
 
 ### [catacumba/](catacumba/) - Catacumba BBS
 
-**Dungeon pseudo-3D con raycasting puro en ASCII**. Mazmorra 12x12 que recorres en primera persona; las paredes se renderizan con shading por distancia (`█▓▒░`) y un mini-mapa en la esquina te ayuda. Busca la salida `E`. Una locura tecnica que aguanta gracias al shadow buffer diferencial.
+**Dungeon pseudo-3D con raycasting puro en ASCII**. Mazmorra 12x12 procedural (recursive backtracker) que recorres en primera persona; paredes con shading por distancia (`█▓▒░`), niebla de guerra en el mini-mapa (solo ves lo que tus rayos han iluminado), ratas que deambulan y muerden, disparo con SPACE (raycast con hitbox y comprobacion de muros), HP, mira centrada, fogonazo y flash rojo al recibir daño.
 
 ```
 python3 catacumba/catacumba.py
+```
+
+### [outrun/](outrun/) - Outrun BBS
+
+Racer pseudo-3D con perspectiva tipo *Out Run* (Sega 1986). Carretera con horizonte, curvas que se interpolan fila a fila acumulando dx, sol en el fondo y rayas que vuelan. Time-attack 90s, distancia = puntuacion. Toggle de gas con W, pulso de freno con S, A/D giran. Top 10 persistente.
+
+```
+python3 outrun/outrun.py
+```
+
+### [roadfighter/](roadfighter/) - Road Fighter BBS
+
+Racer cenital tipo *Road Fighter* (Konami 1984). Carretera que serpentea horizontalmente (curvas por seno), scenery (arboles, casas, rocas) volando por los lados como sensacion de velocidad, max 2 coches enemigos simultaneos para no saturar el modem. 60s, esquiva y adelanta. Optimizado para BBS: hierba y arcen estaticos, solo se mueve lo necesario (~68 celdas/frame medias a tope de gas).
+
+```
+python3 roadfighter/roadfighter.py
 ```
 
 ## Requisitos
@@ -148,6 +164,8 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Breakout BBS   | real-time arcade      | char-mode     | en pruebas        |
 | Limonada BBS   | turn-based sim        | line-mode     | en pruebas        |
 | Catacumba BBS  | real-time pseudo-3D   | char-mode     | en pruebas        |
+| Outrun BBS     | real-time pseudo-3D   | char-mode     | en pruebas        |
+| Road Fighter BBS | real-time cenital   | char-mode     | en pruebas        |
 
 ## Licencia
 
