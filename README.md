@@ -133,6 +133,14 @@ Racer cenital tipo *Road Fighter* (Konami 1984). Carretera que serpentea horizon
 python3 roadfighter/roadfighter.py
 ```
 
+### [simon/](simon/) - Simon BBS
+
+Simon dice. 4 cuadrantes gigantes en CP437 (ROJO, VERDE, AZUL, AMARILLO) con teclas QWAS en disposicion fisica 2x2 sobre el teclado. La maquina ilumina una secuencia, tu la repites. Cada nivel añade un paso y la velocidad sube. Pantalla casi estatica: solo cambia el cuadrante que se ilumina. Top 10.
+
+```
+python3 simon/simon.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
@@ -166,6 +174,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Catacumba BBS  | real-time pseudo-3D   | char-mode     | en pruebas        |
 | Outrun BBS     | real-time pseudo-3D   | char-mode     | en pruebas        |
 | Road Fighter BBS | real-time cenital   | char-mode     | en pruebas        |
+| Simon BBS      | memoria turn-based    | char-mode     | en pruebas        |
 
 ## Licencia
 
