@@ -104,6 +104,10 @@ def clima_aleatorio(nivel_dia):
 
 # ---------- io ----------
 
+class SalirJuego(Exception):
+    pass
+
+
 def pedir_num(prompt, minimo, maximo, default=None):
     while True:
         suf = f" [{default}]" if default is not None else ""
@@ -111,6 +115,8 @@ def pedir_num(prompt, minimo, maximo, default=None):
             s = input(f"  {prompt}{suf}: ").strip()
         except EOFError:
             return default if default is not None else minimo
+        if s.upper() == "Q":
+            raise SalirJuego()
         if s == "" and default is not None:
             return default
         try:
@@ -170,7 +176,7 @@ def pantalla_costes():
 
 
 def pedir_decisiones(dinero):
-    print("  " + c("DECISIONES DE HOY", "bold"))
+    print("  " + c("DECISIONES DE HOY", "bold") + c("  (Q para abandonar la partida)", "dim"))
     print("  " + c("─" * 30, "dim"))
     # vasos: maximo limitado por dinero
     max_vasos = dinero // COSTE_VASO
@@ -433,10 +439,10 @@ def pantalla_final(dinero, dias_completos):
         nombre = ""
         while not nombre:
             try:
-                raw = input(margen + "  Iniciales (3 letras): ").strip().upper()
+                raw = input(margen + "  Iniciales (3 chars): ").strip().upper()
             except EOFError:
                 raw = "AAA"
-            nombre = "".join(ch for ch in raw if ch.isalpha())[:3].ljust(3, "A")
+            nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
         scores = guardar_score(nombre, dinero)
     else:
         scores = cargar_scores()
@@ -459,21 +465,24 @@ def pantalla_final(dinero, dias_completos):
 def jugar():
     dinero = DINERO_INICIAL
     dias_jugados = 0
-    for dia in range(1, DIAS_TOTAL + 1):
-        if dinero < COSTE_VASO:
-            # bancarrota
-            return dinero, dias_jugados, False
-        cabecera(dia, dinero)
-        clima = clima_aleatorio(dia)
-        pantalla_meteo(clima)
-        pantalla_costes()
-        vasos, precio, anuncios = pedir_decisiones(dinero)
-        res = simular_dia(clima, vasos, precio, anuncios)
-        dinero += res["beneficio"]
-        if dinero < 0:
-            dinero = 0
-        pantalla_resultados(res, dia, dinero)
-        dias_jugados = dia
+    try:
+        for dia in range(1, DIAS_TOTAL + 1):
+            if dinero < COSTE_VASO:
+                # bancarrota
+                return dinero, dias_jugados, False
+            cabecera(dia, dinero)
+            clima = clima_aleatorio(dia)
+            pantalla_meteo(clima)
+            pantalla_costes()
+            vasos, precio, anuncios = pedir_decisiones(dinero)
+            res = simular_dia(clima, vasos, precio, anuncios)
+            dinero += res["beneficio"]
+            if dinero < 0:
+                dinero = 0
+            pantalla_resultados(res, dia, dinero)
+            dias_jugados = dia
+    except SalirJuego:
+        return dinero, dias_jugados, False
     return dinero, dias_jugados, True
 
 

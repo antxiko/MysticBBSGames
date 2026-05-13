@@ -584,10 +584,10 @@ def pantalla_final(score_total, niveles_resueltos, abandono):
         nombre = ""
         while not nombre:
             try:
-                raw = input(margen + "  Iniciales (3 letras): ").strip().upper()
+                raw = input(margen + "  Iniciales (3 chars): ").strip().upper()
             except EOFError:
                 raw = "AAA"
-            nombre = "".join(ch for ch in raw if ch.isalpha())[:3].ljust(3, "A")
+            nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
         scores = guardar_score(nombre, score_total, niveles_resueltos)
     else:
         scores = cargar_scores()
