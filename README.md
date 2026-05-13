@@ -141,6 +141,14 @@ Simon dice. 4 cuadrantes gigantes en CP437 (ROJO, VERDE, AZUL, AMARILLO) con tec
 python3 simon/simon.py
 ```
 
+### [movida/](movida/) - Movida
+
+Aventura conversacional castiza-punk ambientada en Madrid 1985 (la Movida). Sabado noche, after secreto kinky-punk en una nave de Vallecas, y tu sin entrada. 22 habitaciones (Malasaña, Chueca, Lavapies, Rastro), 11 NPCs (Marichu, Pichi, Antonio, Yvonne, Casto, Tito, Murci, Don Sebas, la vieja, el sereno, Bigote-Polla), parser simple verbo-sustantivo con sinonimos, 3 cadenas de puzzles que confluyen: objeto raro (vibrador rosa del 75 vintage), 5000 pelas (poker o reventa) y palabra de paso. Tres finales. Line-mode, jugable en cualquier terminal. Top 10 por turnos.
+
+```
+python3 movida/movida.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
@@ -175,6 +183,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Outrun BBS     | real-time pseudo-3D   | char-mode     | en pruebas        |
 | Road Fighter BBS | real-time cenital   | char-mode     | en pruebas        |
 | Simon BBS      | memoria turn-based    | char-mode     | en pruebas        |
+| Movida         | aventura conversacional | line-mode   | en pruebas        |
 
 ## Licencia
 
