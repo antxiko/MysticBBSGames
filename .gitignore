@@ -28,3 +28,9 @@ mystic_bbs.py
 
 # No subir script de referencia con secretos
 fhunter.py
+
+# Scoreboard global: config con token, cola de submits pendientes, DB del server
+scores_config.json
+pending_submissions.jsonl
+server/data/
+.venv-server/

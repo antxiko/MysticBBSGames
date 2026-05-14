@@ -4,6 +4,10 @@ import os
 import sys
 from datetime import date
 
+# Cliente compartido para scores: vive en la raiz del repo.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import bbs_scores  # noqa: E402
+
 try:
     sys.stdout.reconfigure(encoding="cp437", errors="replace")
 except Exception:
@@ -33,8 +37,8 @@ except ImportError:
     TERMIOS_OK = False
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SCORES_FILE = os.path.join(SCRIPT_DIR, "sokoban_scores.txt")
 MAX_TOP = 10
+ASCENDING = False  # True si menos = mejor
 
 COLS = 80
 ROWS = 24
@@ -446,48 +450,6 @@ def render(state, nivel_idx, nivel_nombre, score_total, movs, msg=None):
     flush_frame(frame)
 
 
-# ---------- scores ----------
-
-def cargar_scores():
-    if not os.path.exists(SCORES_FILE):
-        return []
-    try:
-        with open(SCORES_FILE, "r", encoding="utf-8") as f:
-            out = []
-            for linea in f:
-                parts = linea.strip().split(";")
-                if len(parts) == 4:
-                    nombre, puntos, niveles, fecha = parts
-                    try:
-                        out.append((nombre, int(puntos), int(niveles), fecha))
-                    except ValueError:
-                        continue
-            return sorted(out, key=lambda x: -x[1])[:MAX_TOP]
-    except OSError:
-        return []
-
-
-def guardar_score(nombre, puntos, niveles):
-    scores = cargar_scores()
-    scores.append((nombre, puntos, niveles, date.today().isoformat()))
-    scores = sorted(scores, key=lambda x: -x[1])[:MAX_TOP]
-    try:
-        with open(SCORES_FILE, "w", encoding="utf-8") as f:
-            for n, p, nv, fe in scores:
-                f.write(f"{n};{p};{nv};{fe}\n")
-    except OSError:
-        pass
-    return scores
-
-
-def es_top(puntos):
-    if puntos <= 0:
-        return False
-    scores = cargar_scores()
-    if len(scores) < MAX_TOP:
-        return True
-    return puntos > scores[-1][1]
-
 
 # ---------- splash y final ----------
 
@@ -623,7 +585,7 @@ def pantalla_final(score_total, niveles_resueltos, abandono):
     print(margen + c("╚" + linea + "╝", color_caja))
     print()
 
-    if es_top(score_total):
+    if bbs_scores.entra_en_top_local(score_total, max_top=MAX_TOP, ascending=ASCENDING):
         print(margen + c("  [ENTRAS EN EL TOP 10]", "amarB", "bold"))
         print()
         nombre = ""
@@ -633,9 +595,12 @@ def pantalla_final(score_total, niveles_resueltos, abandono):
             except EOFError:
                 raw = "AAA"
             nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
-        scores = guardar_score(nombre, score_total, niveles_resueltos)
+        bbs_scores.save_local(nombre, score_total, niveles_resueltos, max_top=MAX_TOP, ascending=ASCENDING)
+        bbs_scores.submit(nombre, score_total, niveles_resueltos)
+        bbs_scores.invalidate_cache()
+        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
     else:
-        scores = cargar_scores()
+        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
 
     print()
     print(margen + c("  TOP 10".ljust(ancho), "bold"))

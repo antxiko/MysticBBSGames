@@ -5,6 +5,10 @@ import random
 import sys
 from datetime import date
 
+# Cliente compartido para scores: vive en la raiz del repo.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import bbs_scores  # noqa: E402
+
 try:
     sys.stdout.reconfigure(encoding="cp437", errors="replace")
 except Exception:
@@ -29,8 +33,8 @@ configurar_backspace()
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SCORES_FILE = os.path.join(SCRIPT_DIR, "wordle_scores.txt")
 MAX_TOP = 10
+ASCENDING = True  # True si menos = mejor
 
 LARGO = 5
 INTENTOS_MAX = 6
@@ -205,48 +209,6 @@ def pintar_estado(intentos, estado_letra, msg=None, msg_estilo=None):
         print()
 
 
-# ---------- scores ----------
-
-def cargar_scores():
-    if not os.path.exists(SCORES_FILE):
-        return []
-    try:
-        with open(SCORES_FILE, "r", encoding="utf-8") as f:
-            out = []
-            for linea in f:
-                parts = linea.strip().split(";")
-                if len(parts) == 3:
-                    nombre, puntos, fecha = parts
-                    try:
-                        out.append((nombre, int(puntos), fecha))
-                    except ValueError:
-                        continue
-            return sorted(out, key=lambda x: -x[1])[:MAX_TOP]
-    except OSError:
-        return []
-
-
-def guardar_score(nombre, puntos):
-    scores = cargar_scores()
-    scores.append((nombre, puntos, date.today().isoformat()))
-    scores = sorted(scores, key=lambda x: -x[1])[:MAX_TOP]
-    try:
-        with open(SCORES_FILE, "w", encoding="utf-8") as f:
-            for n, p, d in scores:
-                f.write(f"{n};{p};{d}\n")
-    except OSError:
-        pass
-    return scores
-
-
-def es_top(puntos):
-    if puntos <= 0:
-        return False
-    scores = cargar_scores()
-    if len(scores) < MAX_TOP:
-        return True
-    return puntos > scores[-1][1]
-
 
 # ---------- splash y pantalla final ----------
 
@@ -374,7 +336,7 @@ def pantalla_final(puntos_total, partidas, ganadas):
     print(margen + c("\u255A" + linea + "\u255D", "magenta"))
     print()
 
-    if es_top(puntos_total):
+    if bbs_scores.entra_en_top_local(puntos_total, max_top=MAX_TOP, ascending=ASCENDING):
         print(margen + c("  [ENTRAS EN EL TOP 10]", "amarB", "bold"))
         print()
         nombre = ""
@@ -384,9 +346,12 @@ def pantalla_final(puntos_total, partidas, ganadas):
             except EOFError:
                 raw = "AAA"
             nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
-        scores = guardar_score(nombre, puntos_total)
+        bbs_scores.save_local(nombre, puntos_total, max_top=MAX_TOP, ascending=ASCENDING)
+        bbs_scores.submit(nombre, puntos_total)
+        bbs_scores.invalidate_cache()
+        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
     else:
-        scores = cargar_scores()
+        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
 
     print()
     print(margen + c("  TOP 10".ljust(ancho), "bold"))

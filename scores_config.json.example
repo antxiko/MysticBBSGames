@@ -1,0 +1,8 @@
+{
+  "server_url": "https://scores.tudominio.com",
+  "bbs_short_name": "VALAR",
+  "full_name": "Valar BBS",
+  "api_token": "PEGA-AQUI-EL-TOKEN-QUE-TE-DIO-EL-ADMIN-DEL-VPS",
+  "timeout_seconds": 2.0,
+  "cache_seconds": 60
+}

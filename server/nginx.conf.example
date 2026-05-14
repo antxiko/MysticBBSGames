@@ -1,0 +1,37 @@
+# Ejemplo de reverse proxy nginx para BBS Scores.
+# Asume que tu VPS tiene nginx en el 443 con certificados (Let's Encrypt).
+# Si no usas HTTPS, puedes saltarte certbot y poner solo el server 80 -> 8765,
+# pero los tokens viajan en claro asi que se recomienda fuertemente HTTPS.
+
+server {
+    listen 443 ssl http2;
+    server_name scores.tudominio.com;
+
+    ssl_certificate     /etc/letsencrypt/live/scores.tudominio.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/scores.tudominio.com/privkey.pem;
+
+    # Rate limit modesto: 30 req/min por IP en /api/scores POST.
+    # Define en http {} : limit_req_zone $binary_remote_addr zone=submitlim:10m rate=30r/m;
+    location /api/scores {
+        limit_req zone=submitlim burst=10 nodelay;
+        proxy_pass http://127.0.0.1:8765;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8765;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Si prefieres exponer directamente en un puerto no estandar (sin nginx),
+# arranca uvicorn con --host 0.0.0.0 --port <puerto-libre> y abre el puerto
+# en el firewall del VPS. Ejemplo de puertos libres en tu VPS: cualquiera que
+# no sea 22 (ssh), 23 (telnet/mystic), 8080 (ya usado), 9876 (ya usado).
+# El servicio por defecto escucha 127.0.0.1:8765 - cambialo en bbs-scores.service.

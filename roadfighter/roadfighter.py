@@ -7,6 +7,10 @@ import sys
 import time
 from datetime import date
 
+# Cliente compartido para scores: vive en la raiz del repo.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import bbs_scores  # noqa: E402
+
 try:
     sys.stdout.reconfigure(encoding="cp437", errors="replace")
 except Exception:
@@ -83,8 +87,8 @@ WORLD_SCALE = 0.15
 DIST_SCALE = 0.10
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SCORES_FILE = os.path.join(SCRIPT_DIR, "roadfighter_scores.txt")
 MAX_TOP = 10
+ASCENDING = False  # True si menos = mejor
 
 COLORES = {
     "rojo":    "\x1b[31m",
@@ -360,46 +364,6 @@ def render(frame, world_offset, player_x, speed, enemies, scenery,
         msg = " ¡FUERA DE PISTA! "
         set_text(frame, HUD_TOP, (COLS - len(msg)) // 2, msg, "amarB", "bold")
 
-
-# ---------- scores ----------
-
-def cargar_scores():
-    if not os.path.exists(SCORES_FILE):
-        return []
-    out = []
-    try:
-        with open(SCORES_FILE, "r", encoding="utf-8") as f:
-            for ln in f:
-                parts = ln.strip().split("\t")
-                if len(parts) == 3:
-                    nombre, puntos, fecha = parts
-                    try:
-                        out.append((nombre, int(puntos), fecha))
-                    except ValueError:
-                        pass
-    except Exception:
-        return []
-    return sorted(out, key=lambda x: -x[1])[:MAX_TOP]
-
-
-def guardar_score(nombre, puntos):
-    scores = cargar_scores()
-    scores.append((nombre, puntos, date.today().isoformat()))
-    scores = sorted(scores, key=lambda x: -x[1])[:MAX_TOP]
-    try:
-        with open(SCORES_FILE, "w", encoding="utf-8") as f:
-            for n, p, d in scores:
-                f.write(f"{n}\t{p}\t{d}\n")
-    except Exception:
-        pass
-    return scores
-
-
-def entra_en_top(puntos):
-    scores = cargar_scores()
-    if len(scores) < MAX_TOP:
-        return puntos > 0
-    return puntos > scores[-1][1]
 
 
 # ---------- splash y final ----------
@@ -738,8 +702,8 @@ def main():
             restaurar_terminal(old2)
             sys.stdout.write(show_cursor(True))
             sys.stdout.flush()
-            scores = cargar_scores()
-            top = entra_en_top(score)
+            scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+            top = bbs_scores.entra_en_top_local(score, max_top=MAX_TOP, ascending=ASCENDING)
             nombre_guardado = None
             if top:
                 ancho = 50
@@ -753,7 +717,10 @@ def main():
                     except EOFError:
                         raw = "AAA"
                     nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
-                scores = guardar_score(nombre, score)
+                bbs_scores.save_local(nombre, score, max_top=MAX_TOP, ascending=ASCENDING)
+                bbs_scores.submit(nombre, score)
+                bbs_scores.invalidate_cache()
+                scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
                 nombre_guardado = nombre
             pantalla_final(dist, overtakes, crashes, score, top, scores, nombre_guardado)
             try:

@@ -12,6 +12,10 @@ import sys
 import time
 from datetime import date
 
+# Cliente compartido para scores: vive en la raiz del repo.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import bbs_scores  # noqa: E402
+
 try:
     sys.stdout.reconfigure(encoding="cp437", errors="replace")
 except Exception:
@@ -46,7 +50,6 @@ ROWS = 24
 GROUND_ROW = 18  # fila donde se pinta la linea de suelo
 DINO_X = 6  # columna izquierda del sprite del dino
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SCORES_FILE = os.path.join(SCRIPT_DIR, "dino_scores.txt")
 MAX_TOP = 10
 
 # fisicas
@@ -318,52 +321,13 @@ def render(frame, dino_y, dino_state, obstaculos, score, hi_score, speed):
     set_text(frame, 23, COLS - 14, f"Vel {speed:>4.1f}", "dim")
 
 
-# ---------- scores ----------
-
-def cargar_scores():
-    if not os.path.exists(SCORES_FILE):
-        return []
-    out = []
-    try:
-        with open(SCORES_FILE, "r", encoding="utf-8") as f:
-            for ln in f:
-                parts = ln.strip().split("\t")
-                if len(parts) == 3:
-                    nombre, puntos, fecha = parts
-                    try:
-                        out.append((nombre, int(puntos), fecha))
-                    except ValueError:
-                        pass
-    except Exception:
-        return []
-    return sorted(out, key=lambda x: -x[1])[:MAX_TOP]
-
-
-def guardar_score(nombre, puntos):
-    scores = cargar_scores()
-    scores.append((nombre, puntos, date.today().isoformat()))
-    scores = sorted(scores, key=lambda x: -x[1])[:MAX_TOP]
-    try:
-        with open(SCORES_FILE, "w", encoding="utf-8") as f:
-            for n, p, d in scores:
-                f.write(f"{n}\t{p}\t{d}\n")
-    except Exception:
-        pass
-    return scores
-
-
-def entra_en_top(puntos):
-    scores = cargar_scores()
-    if len(scores) < MAX_TOP:
-        return puntos > 0
-    return puntos > scores[-1][1]
+# Scores: delegado al cliente compartido bbs_scores. Dino usa orden descendente.
+ASCENDING = False
 
 
 def mejor_score():
-    scores = cargar_scores()
-    if not scores:
-        return 0
-    return scores[0][1]
+    top = bbs_scores.top_local(limit=1, ascending=ASCENDING)
+    return top[0].score if top else 0
 
 
 # ---------- splash y manual ----------
@@ -458,34 +422,78 @@ def splash():
         mostrar_manual()
 
 
-def pantalla_final(score, hi_score, top_entered, scores, nombre_guardado=None):
-    sys.stdout.write(show_cursor(True))
-    cls()
-    print()
-    ancho = 50
-    margen = " " * ((COLS - (ancho + 2)) // 2)
-    linea = "═" * ancho
-    lado = c("║", "magentaB")
-    print(margen + c("╔" + linea + "╗", "magentaB"))
-    print(margen + lado + c(" GAME OVER ".center(ancho), "rojoB", "bold") + lado)
-    print(margen + c("╠" + linea + "╣", "magentaB"))
-    print(margen + lado + f"  Score        : {c(str(score).rjust(15) + '  ', 'cyanB', 'bold')}".ljust(ancho + 15) + lado)
-    print(margen + lado + f"  Mejor previo : {c(str(hi_score).rjust(15) + '  ', 'amarB', 'bold')}".ljust(ancho + 15) + lado)
-    if top_entered:
-        print(margen + lado + c("  ¡NUEVO RECORD!".center(ancho), "amarB", "bold") + lado)
-    print(margen + c("╠" + linea + "╣", "magentaB"))
-    print(margen + lado + c(" TOP 10 ".center(ancho), "cyanB", "bold") + lado)
+def _pintar_top(scores, score, nombre_guardado, ancho, margen, lado, modo_label, modo_color):
+    """Pinta la cabecera de la tabla + las 10 filas. scores es list[ScoreEntry]."""
+    print(margen + lado + c(modo_label.center(ancho), modo_color, "bold") + lado)
+    cfg = bbs_scores.get_config()
     for i in range(MAX_TOP):
         if i < len(scores):
-            n, p, d = scores[i]
-            destacado = (nombre_guardado and n == nombre_guardado and p == score)
+            e = scores[i]
+            destacado = (nombre_guardado and e.handle == nombre_guardado
+                         and e.score == score
+                         and e.bbs_short_name == cfg.bbs_short_name)
             estilo = ("amarB", "bold") if destacado else ("blanco",)
-            ln_txt = f"  {i + 1:>2}. {n}   {p:>6} pts   {d}"
+            # En global muestra handle@BBS; en local solo handle.
+            es_global = (modo_label.strip().upper().startswith("TOP GLOBAL"))
+            etiqueta = e.display_handle if es_global else e.handle
+            ln_txt = f"  {i + 1:>2}. {etiqueta:<14} {e.score:>6} pts   {e.date}"
             print(margen + lado + c(ln_txt.ljust(ancho), *estilo) + lado)
         else:
             print(margen + lado + " " * ancho + lado)
-    print(margen + c("╚" + linea + "╝", "magentaB"))
-    print()
+
+
+def pantalla_final(score, hi_score, top_entered, nombre_guardado=None):
+    """Muestra el resumen + top con toggle L/G. Cada iteracion del bucle redibuja."""
+    sys.stdout.write(show_cursor(True))
+    modo = "local"  # "local" | "global"
+    while True:
+        cls()
+        print()
+        ancho = 56
+        margen = " " * ((COLS - (ancho + 2)) // 2)
+        linea = "═" * ancho
+        lado = c("║", "magentaB")
+        print(margen + c("╔" + linea + "╗", "magentaB"))
+        print(margen + lado + c(" GAME OVER ".center(ancho), "rojoB", "bold") + lado)
+        print(margen + c("╠" + linea + "╣", "magentaB"))
+        print(margen + lado + f"  Score        : {c(str(score).rjust(15) + '  ', 'cyanB', 'bold')}".ljust(ancho + 15) + lado)
+        print(margen + lado + f"  Mejor previo : {c(str(hi_score).rjust(15) + '  ', 'amarB', 'bold')}".ljust(ancho + 15) + lado)
+        if top_entered:
+            print(margen + lado + c("  ¡NUEVO RECORD!".center(ancho), "amarB", "bold") + lado)
+        print(margen + c("╠" + linea + "╣", "magentaB"))
+
+        if modo == "global":
+            scores = bbs_scores.top_global(limit=MAX_TOP, ascending=ASCENDING)
+            online = bbs_scores.is_online()
+            etiqueta = " TOP GLOBAL " if online else " TOP GLOBAL (sin conexion, mostrando local) "
+            color = "verdeB" if online else "amarB"
+            if not online:
+                scores = bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)
+        else:
+            scores = bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)
+            etiqueta = " TOP LOCAL "
+            color = "cyanB"
+
+        _pintar_top(scores, score, nombre_guardado, ancho, margen, lado, etiqueta, color)
+        print(margen + c("╚" + linea + "╝", "magentaB"))
+        print()
+
+        marca_l = ("amarB", "bold") if modo == "local" else ("dim",)
+        marca_g = ("amarB", "bold") if modo == "global" else ("dim",)
+        hint = (c(" [L] local ", *marca_l) + " " + c(" [G] global ", *marca_g)
+                + "   " + c("[Enter] continuar", "blanco"))
+        print(margen + "  " + hint)
+        try:
+            raw = input("").strip().upper()
+        except EOFError:
+            return
+        if raw == "L":
+            modo = "local"
+            continue
+        if raw == "G":
+            modo = "global"
+            continue
+        return
 
 
 # ---------- juego ----------
@@ -638,24 +646,30 @@ def main():
             restaurar_terminal(old2)
             sys.stdout.write(show_cursor(True))
             sys.stdout.flush()
-            scores = cargar_scores()
-            top = entra_en_top(score)
+            top = bbs_scores.entra_en_top_local(score, max_top=MAX_TOP, ascending=ASCENDING)
             nombre_guardado = None
-            if top and score > 0:
-                ancho = 50
-                margen = " " * ((COLS - (ancho + 2)) // 2)
-                print()
-                print(margen + c("  ¡Has entrado en el TOP 10!", "amarB", "bold"))
-                nombre = ""
-                while not nombre:
-                    try:
-                        raw = input(margen + "  Iniciales (3 chars): ").strip().upper()
-                    except EOFError:
-                        raw = "AAA"
-                    nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
-                scores = guardar_score(nombre, score)
-                nombre_guardado = nombre
-            pantalla_final(score, hi, top, scores, nombre_guardado)
+            if score > 0:
+                if top:
+                    ancho = 50
+                    margen = " " * ((COLS - (ancho + 2)) // 2)
+                    print()
+                    print(margen + c("  ¡Has entrado en el TOP local!", "amarB", "bold"))
+                    nombre = ""
+                    while not nombre:
+                        try:
+                            raw = input(margen + "  Iniciales (3 chars): ").strip().upper()
+                        except EOFError:
+                            raw = "AAA"
+                        nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
+                    bbs_scores.save_local(nombre, score, max_top=MAX_TOP, ascending=ASCENDING)
+                    nombre_guardado = nombre
+                else:
+                    # No entra en top local, pero mandamos al global igualmente.
+                    nombre = "AAA"
+                # Submit al servidor (fire-and-forget). Si no hay config = no-op.
+                bbs_scores.submit(nombre_guardado or "AAA", score)
+                bbs_scores.invalidate_cache(game="dino")
+            pantalla_final(score, hi, top, nombre_guardado)
             try:
                 raw = input("\n  Otra partida? [S/N]: ").strip().upper()
             except EOFError:

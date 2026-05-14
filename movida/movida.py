@@ -8,6 +8,10 @@ import os
 import sys
 from datetime import date
 
+# Cliente compartido para scores: vive en la raiz del repo.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import bbs_scores  # noqa: E402
+
 try:
     sys.stdout.reconfigure(encoding="cp437", errors="replace")
 except Exception:
@@ -30,8 +34,8 @@ configurar_backspace()
 
 COLS = 80
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SCORES_FILE = os.path.join(SCRIPT_DIR, "movida_scores.txt")
 MAX_TOP = 10
+ASCENDING = True  # True si menos = mejor
 
 COLORES = {
     "rojo":    "\x1b[31m",
@@ -923,46 +927,6 @@ def parse(cmd):
 
 # ---------- SCORES (simple: turnos para ganar; menos turnos = mejor) ----------
 
-def cargar_scores():
-    if not os.path.exists(SCORES_FILE):
-        return []
-    out = []
-    try:
-        with open(SCORES_FILE, "r", encoding="utf-8") as f:
-            for ln in f:
-                parts = ln.strip().split("\t")
-                if len(parts) == 3:
-                    nombre, puntos, fecha = parts
-                    try:
-                        out.append((nombre, int(puntos), fecha))
-                    except ValueError:
-                        pass
-    except Exception:
-        return []
-    # ranking: menos turnos = mejor, asi que orden ascendente
-    return sorted(out, key=lambda x: x[1])[:MAX_TOP]
-
-
-def guardar_score(nombre, turnos):
-    scores = cargar_scores()
-    scores.append((nombre, turnos, date.today().isoformat()))
-    scores = sorted(scores, key=lambda x: x[1])[:MAX_TOP]
-    try:
-        with open(SCORES_FILE, "w", encoding="utf-8") as f:
-            for n, p, d in scores:
-                f.write(f"{n}\t{p}\t{d}\n")
-    except Exception:
-        pass
-    return scores
-
-
-def entra_en_top(turnos):
-    scores = cargar_scores()
-    if len(scores) < MAX_TOP:
-        return True
-    return turnos < scores[-1][1]
-
-
 # ---------- SPLASH y finales ----------
 
 LOGO_MOVIDA = [
@@ -1111,15 +1075,18 @@ def main():
         chequear_eventos(est)
     pantalla_final(est)
     if est.fin == "exito":
-        scores = cargar_scores()
-        if entra_en_top(est.turnos):
+        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+        if bbs_scores.entra_en_top_local(est.turnos, max_top=MAX_TOP, ascending=ASCENDING):
             print(c("¡Has entrado en el TOP 10!", "amarB", "bold"))
             try:
                 raw = input("  Iniciales (3 chars): ").strip().upper()
             except EOFError:
                 raw = "AAA"
             nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
-            scores = guardar_score(nombre, est.turnos)
+            bbs_scores.save_local(nombre, est.turnos, max_top=MAX_TOP, ascending=ASCENDING)
+            bbs_scores.submit(nombre, est.turnos)
+            bbs_scores.invalidate_cache()
+            scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
         if scores:
             print(c("\n  TOP 10 (menos turnos = mejor):", "cyanB", "bold"))
             for i, (n, p, d) in enumerate(scores, 1):
