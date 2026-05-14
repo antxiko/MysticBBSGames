@@ -219,19 +219,19 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Snake BBS      | real-time             | char-mode     | si, OK            |
 | Wordle BBS     | turn-based            | line-mode     | si, OK            |
 | Buscaminas BBS | turn-based            | char-mode     | si, OK            |
-| Maze BBS       | turn-based roguelike  | char-mode     | en pruebas        |
-| BBSATRO        | turn-based cartas     | char-mode     | en pruebas        |
-| 2048 BBS       | turn-based puzzle     | char-mode     | en pruebas        |
-| Puyo Puyo BBS  | real-time puzzle      | char-mode     | en pruebas        |
-| Sokoban BBS    | turn-based puzzle     | char-mode     | en pruebas        |
-| Breakout BBS   | real-time arcade      | char-mode     | en pruebas        |
-| Limonada BBS   | turn-based sim        | line-mode     | en pruebas        |
-| Catacumba BBS  | real-time pseudo-3D   | char-mode     | en pruebas        |
+| Maze BBS       | turn-based roguelike  | char-mode     | si, OK            |
+| BBSATRO        | turn-based cartas     | char-mode     | si, OK            |
+| 2048 BBS       | turn-based puzzle     | char-mode     | si, OK            |
+| Puyo Puyo BBS  | real-time puzzle      | char-mode     | si, OK            |
+| Sokoban BBS    | turn-based puzzle     | char-mode     | si, OK            |
+| Breakout BBS   | real-time arcade      | char-mode     | si, OK            |
+| Limonada BBS   | turn-based sim        | line-mode     | si, OK            |
+| Catacumba BBS  | real-time pseudo-3D   | char-mode     | si, OK            |
 | Outrun BBS     | real-time pseudo-3D   | char-mode     | en pruebas        |
-| Road Fighter BBS | real-time cenital   | char-mode     | en pruebas        |
-| Simon BBS      | memoria turn-based    | char-mode     | en pruebas        |
-| Movida         | aventura conversacional | line-mode   | en pruebas        |
-| Dino BBS       | real-time runner      | char-mode     | en pruebas        |
+| Road Fighter BBS | real-time cenital   | char-mode     | si, OK            |
+| Simon BBS      | memoria turn-based    | char-mode     | si, OK            |
+| Movida         | aventura conversacional | line-mode   | si, OK            |
+| Dino BBS       | real-time runner      | char-mode     | si, OK            |
 
 ## Licencia
 
