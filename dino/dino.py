@@ -13,7 +13,9 @@ import time
 from datetime import date
 
 # Cliente compartido para scores: vive en la raiz del repo.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_d = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _d)                    # flat: bbs_scores en la misma carpeta
+sys.path.insert(0, os.path.dirname(_d))   # subdirs: bbs_scores un nivel arriba
 import bbs_scores  # noqa: E402
 
 try:

@@ -37,3 +37,6 @@ server/data/
 
 # Documentos locales con secretos (tokens de cada BBS)
 *.local.md
+
+# Carpeta Deploy con scores_config.json pre-rellenado (token dentro)
+Deploy/

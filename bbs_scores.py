@@ -103,25 +103,33 @@ def is_online() -> bool:
 
 # ---------- autodeteccion del juego ----------
 
-def _detect_game() -> str:
-    """Devuelve el nombre del directorio del script que llamo a este modulo.
-    Salta los frames de bbs_scores.py mismo."""
+def _detect_caller() -> tuple[str, str]:
+    """Devuelve (game_name, caller_dir) del script que llamo a este modulo.
+    game_name = filename del script sin extension (ej. 'dino' de dino.py).
+    caller_dir = directorio absoluto donde vive el script.
+    Funciona tanto en layout flat (todos .py juntos) como en subdirs."""
     for frame_info in inspect.stack()[1:]:
         f = frame_info.filename
         if os.path.abspath(f) == os.path.abspath(__file__):
             continue
-        parent_dir = os.path.basename(os.path.dirname(os.path.abspath(f)))
-        if parent_dir and parent_dir != "":
-            return parent_dir.lower()
-    return "unknown"
+        caller_dir = os.path.dirname(os.path.abspath(f))
+        stem = os.path.splitext(os.path.basename(f))[0]
+        if stem:
+            return stem.lower(), caller_dir
+    return "unknown", REPO_ROOT
 
 
-def _resolve_game(game: Optional[str]) -> str:
-    return (game or _detect_game()).lower()
+def _resolve_caller(game: Optional[str]) -> tuple[str, str]:
+    """Devuelve (game_name, scores_dir). Si pasas `game` explicito se respeta
+    pero el dir se sigue autodetectando del caller."""
+    detected_game, caller_dir = _detect_caller()
+    if game:
+        return game.lower(), caller_dir
+    return detected_game, caller_dir
 
 
-def _scores_path(game: str) -> str:
-    return os.path.join(REPO_ROOT, game, f"{game}_scores.txt")
+def _scores_path(game: str, scores_dir: str) -> str:
+    return os.path.join(scores_dir, f"{game}_scores.txt")
 
 
 # ---------- fichero local ----------
@@ -129,8 +137,8 @@ def _scores_path(game: str) -> str:
 def top_local(limit: int = 10, ascending: bool = False, *, game: str | None = None) -> list[ScoreEntry]:
     """Top de la BBS local desde el fichero. Tolera separadores tab y semicolon
     para compatibilidad con ficheros historicos del repo."""
-    game = _resolve_game(game)
-    path = _scores_path(game)
+    game, scores_dir = _resolve_caller(game)
+    path = _scores_path(game, scores_dir)
     if not os.path.exists(path):
         return []
     out: list[ScoreEntry] = []
@@ -166,8 +174,8 @@ def save_local(handle: str, score: int, extra: dict[str, Any] | None = None,
                *, game: str | None = None) -> list[ScoreEntry]:
     """Inserta un score en el fichero local y devuelve el top actualizado."""
     from datetime import date as _date
-    game = _resolve_game(game)
-    path = _scores_path(game)
+    game, scores_dir = _resolve_caller(game)
+    path = _scores_path(game, scores_dir)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     existing = top_local(limit=10_000, ascending=ascending, game=game)
     existing.append(ScoreEntry(
@@ -270,7 +278,7 @@ def submit(handle: str, score: int, extra: dict[str, Any] | None = None,
            *, game: str | None = None) -> bool:
     """Sube el score al server en un thread daemon. Si no hay red o no hay
     config, escribe a pending. Nunca lanza. Devuelve True si quedo entregado."""
-    game = _resolve_game(game)
+    game, _ = _resolve_caller(game)
     cfg = get_config()
     payload: dict[str, Any] = {"game": game, "handle": handle.upper(), "score": int(score)}
     if extra:
@@ -332,7 +340,7 @@ def _cached_top(game: str, scope: str, limit: int, ascending: bool) -> list[Scor
 
 def top_global(limit: int = 10, ascending: bool = False, *, game: str | None = None) -> list[ScoreEntry]:
     """Top mundial via red. Cache cache_seconds. Si falla, devuelve top local."""
-    game = _resolve_game(game)
+    game, _ = _resolve_caller(game)
     data = _cached_top(game, "global", limit, ascending)
     if data:
         return data
@@ -341,7 +349,7 @@ def top_global(limit: int = 10, ascending: bool = False, *, game: str | None = N
 
 def top_bbs(limit: int = 10, ascending: bool = False, *, game: str | None = None) -> list[ScoreEntry]:
     """Top de tu BBS via red. Si falla, devuelve top local."""
-    game = _resolve_game(game)
+    game, _ = _resolve_caller(game)
     data = _cached_top(game, "bbs", limit, ascending)
     if data:
         return data
@@ -353,7 +361,7 @@ def get_top_for_mode(modo: str, limit: int = 10, ascending: bool = False,
     """Helper para el toggle L/G de las pantalla_final.
     Devuelve (scores, etiqueta, online_real). Si modo=global y no hay red,
     cae a local con etiqueta indicandolo."""
-    game = _resolve_game(game)
+    game, _ = _resolve_caller(game)
     if modo == "global":
         scores = top_global(limit, ascending=ascending, game=game)
         online = is_online()
