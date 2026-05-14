@@ -1,15 +1,19 @@
 # Juegos BBS en Python
 
-Coleccion de juegos en modo texto escritos en Python puro, pensados como *doors* para [Mystic BBS](https://www.mysticbbs.com/) pero jugables tambien en cualquier terminal ANSI local.
+Coleccion de **18 juegos** en modo texto escritos en Python puro, pensados como *doors* para [Mystic BBS](https://www.mysticbbs.com/) pero jugables tambien en cualquier terminal ANSI local. Incluye **scoreboard global online** con servidor compartido entre BBSes, panel admin web y ranking publico con filtros temporales.
 
-Todos comparten el mismo patron:
+Demo en vivo: **https://scores.nosignalbbs.com** (No Signal BBS).
+
+Todos los juegos comparten el mismo patron:
 
 - Un unico `.py` por juego, solo con la libreria estandar.
 - UI 80x24 con caracteres CP437 (bordes dobles, bloques, sombras).
 - Colores ANSI clasicos (SGR 30-37 + bold) — compatibles con NetRunner, MuffinTerm y demas clientes BBS.
 - `stdout` reconfigurado a `cp437` para que Mystic los pinte correctamente.
 - **Shadow buffer** en los juegos con render frecuente: solo se emiten las celdas que cambian.
-- Top 10 persistente en un `*_scores.txt` junto al script.
+- Top 10 local persistente en un `*_scores.txt` junto al script.
+- **Toggle `[L]` local / `[G]` global** en pantalla de fin de partida (16 juegos integrados).
+- **Manual del juego** accesible con tecla `M` desde el splash de cada juego.
 
 ## Juegos
 
@@ -157,23 +161,38 @@ Clon del runner del dinosaurio de Chrome offline. Saltas con espacio sobre cactu
 python3 dino/dino.py
 ```
 
-## Scoreboard global
+## Scoreboard global online
 
-Los juegos pueden ademas subir las puntuaciones a un servidor central para que varias BBSes se peleen por el top mundial. En el final de partida, pulsando `G` se ve el top global y `L` vuelve al local. Si no hay config de servidor o no hay conexion, todo cae a modo local solo y el juego sigue funcionando igual que sin scoreboard.
+Los juegos suben las puntuaciones a un servidor central para que varias BBSes se peleen por el top mundial. En el final de partida cada juego muestra `[L] local [G] global [Enter] continuar`. Si no hay config de servidor o no hay conexion, todo cae a modo local solo y el juego sigue funcionando igual.
 
-Arquitectura:
+### Demo en vivo
 
-- **Server**: FastAPI + SQLite en un VPS. Endpoints en [server/](server/). Cada BBS se registra con un token. Auth por Bearer token (no se pueden falsificar BBSes).
-- **Cliente compartido**: [`bbs_scores.py`](bbs_scores.py) en la raiz del repo. Cada juego lo importa y llama `submit()` al perder, `top_local()` y `top_global()` para mostrar. Fail-safe: si la red cae, los submits se reencolan en `pending_submissions.jsonl` y se reintentan.
-- **Panel admin web** en `/admin/` del servidor (HTTP Basic Auth). Listar BBSes, añadir nuevas (con generacion de token one-shot), desactivar, rotar token, borrar con cascade.
-- **Instancia de referencia**: la primera BBS en el repo se llama **No Signal BBS** y el server vive en `https://scores.nosignalbbs.com`.
+**https://scores.nosignalbbs.com** — primera BBS registrada: No Signal BBS.
 
-Para deployar:
+- `/` — landing publica con stats (BBSes activas, juegos, scores totales) y top mundial por juego.
+- `/leaderboard/<game>/?period=week|month|all` — top 25 del juego con tabs **Esta semana / Este mes / Todos los tiempos**, primeros tres puestos en oro/plata/bronce.
+- `/admin/` — panel de administracion (HTTP Basic Auth). Listar/añadir/desactivar/rotar/borrar BBSes y gestionar scores individuales.
+- `/api/scores/<game>?scope=global|bbs&order=desc|asc&period=all|week|month&limit=N` — JSON publico.
 
-- **Servidor VPS**: ver [INSTALL_VPS.md](INSTALL_VPS.md) (sirve para Debian/Ubuntu con Caddy o nginx).
-- **BBS / Mystic**: ver [INSTALL_MYSTIC.md](INSTALL_MYSTIC.md) (clonar repo + dropear `scores_config.json` con el token que te de el admin del VPS).
+### Arquitectura
 
-Identidad: los jugadores siguen escribiendo 3 iniciales en sus tops. En el global se muestran como `INICIALES@BBS` (ej. `AGM@NOSIGNAL`) para distinguir entre BBSes.
+- **Server**: FastAPI + SQLite en VPS detras de Caddy con HTTPS automatico. Codigo en [server/](server/). Auth por Bearer token de BBS (no se puede spoof, el `bbs_id` lo deduce el server del token siempre). Cascade ON DELETE en scores.
+- **Cliente compartido**: [`bbs_scores.py`](bbs_scores.py) en la raiz del repo. Auto-detecta el juego desde el nombre del script (transparente: añadir un juego nuevo no requiere tocar nada). Soporta layouts flat o subdirs. Fail-safe: si la red cae, los submits van a `pending_submissions.jsonl` y se reintentan en el siguiente turno.
+- **Panel admin web**: HTML server-rendered, dark mono, sin JS (excepto un `confirm()` de seguridad). PBKDF2-HMAC-SHA256 con salt para passwords de admin.
+- **Ranking publico web**: misma estetica, sin JS, sin auth, sin cookies. Solo SSR.
+
+### Despliegue
+
+- **Servidor en VPS Linux**: ver [INSTALL_VPS.md](INSTALL_VPS.md). Funciona con Caddy (auto-HTTPS) o nginx + certbot.
+- **BBS / Mystic**: ver [INSTALL_MYSTIC.md](INSTALL_MYSTIC.md). Clonar el repo donde Mystic ejecute los doors, dropear `scores_config.json` con el token que te de el admin del VPS, opcional.
+
+### Identidad de jugadores
+
+Los jugadores escriben 3 iniciales en sus tops. En el global aparecen como `INICIALES@BBS` (ej. `AGM@NOSIGNAL`) para distinguir entre BBSes. La BBS no aporta el handle del usuario; las iniciales las escribe el jugador.
+
+### Juegos con orden ASC
+
+`movida` (menos turnos = mejor) y `wordle` (menos intentos = mejor) ordenan ascendente. El resto, descendente. El cliente lo decide en cada llamada (`ascending=True|False`); el servidor no tiene lista de juegos.
 
 ## Requisitos
 

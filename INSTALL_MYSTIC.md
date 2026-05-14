@@ -20,9 +20,11 @@ en Mystic BBS, opcionalmente con scoreboard global compartido entre BBSes.
 - ANSI-BBS en el perfil de usuario, ancho 80, color activado.
 - (Opcional) salida HTTPS a tu servidor de scores para el scoreboard global.
 
-## Paso 1: clonar el repo
+## Paso 1: instalar los juegos
 
-Donde quieras dentro de la maquina de Mystic. Tipicamente:
+Tienes dos opciones de layout, **ambas funcionan** sin cambiar nada:
+
+### Opcion A: clonar el repo completo (subdirs)
 
 ```bash
 cd /mystic/doors/   # o donde tengas tus doors
@@ -30,8 +32,25 @@ git clone https://github.com/antxiko/MysticBBSGames.git
 cd MysticBBSGames
 ```
 
-A partir de ahora asumo que el repo esta en `/mystic/doors/MysticBBSGames/`.
-Adapta los paths a tu instalacion.
+Cada juego vive en su subcarpeta (`dino/dino.py`, `snake/snake.py`, etc.).
+Para actualizar mas adelante: `git pull` en `/mystic/doors/MysticBBSGames`.
+
+### Opcion B: todos los `.py` en una sola carpeta (flat)
+
+Util si ya tienes tus doors organizados en una sola carpeta:
+
+```bash
+# desde tu maquina local, descarga la carpeta Deploy/ pre-generada (gitignored)
+# o copia manualmente: bbs_scores.py + scores_config.json + cada <juego>/<juego>.py
+# todos juntos en la carpeta donde Mystic ejecuta los doors.
+rsync -avz Deploy/ usuario@vps:/home/mystic/games/
+```
+
+`bbs_scores.py` busca primero en su propia carpeta y, si no encuentra, sube
+un nivel. Asi sirve para los dos layouts.
+
+A partir de ahora asumo que el repo esta en `/mystic/doors/MysticBBSGames/`
+(opcion A). Adapta los paths a tu instalacion.
 
 ## Paso 2: probar un juego localmente
 
