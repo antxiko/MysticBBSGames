@@ -726,6 +726,24 @@ def main():
             sys.stdout.write(show_cursor(True))
             sys.stdout.flush()
             pantalla_final(score, nivel, eliminados, max_cadena)
+            # Toggle [L]ocal / [G]lobal del top mundial
+            while True:
+                try:
+                    _r = input(c("\n  [L] local   [G] global   [Enter] continuar: ", "dim")).strip().upper()
+                except EOFError:
+                    break
+                if _r not in ("L", "G"):
+                    break
+                _modo = "local" if _r == "L" else "global"
+                _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(_modo, limit=MAX_TOP, ascending=ASCENDING)
+                print()
+                print(c("  " + _titulo.strip(), "cyanB", "bold"))
+                print(c("  " + "-" * 50, "dim"))
+                for _i, _e in enumerate(_scores_e, 1):
+                    _et = _e.display_handle if _modo == "global" else _e.handle
+                    print(f"  {_i:>2}. {_et:14}  {str(_e.score).rjust(8)}  {_e.date}")
+                print()
+
             try:
                 raw = input("\n  Otra partida? [S/N]: ").strip().upper()
             except EOFError:

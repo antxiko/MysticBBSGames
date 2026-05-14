@@ -392,17 +392,29 @@ def pantalla_final(puntos, nivel, aciertos):
     else:
         scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
 
-    print()
-    print(margen + c("  TOP 10".ljust(ancho) , "bold"))
-    print(margen + c("\u2500" * ancho, "dim"))
-    for i, (n, p, d) in enumerate(scores, 1):
-        color = "amarB" if p == puntos else "blanco"
-        print(margen + f"  {i:>2}. {c(n, color, 'bold')}  {c(str(p).rjust(8), color)}  {c(d, 'dim')}")
-    print()
-    try:
-        input(margen + c("  Pulsa Enter para salir...", "dim"))
-    except EOFError:
-        pass
+    # Toggle [L]ocal / [G]lobal del top mundial
+    modo = "local"
+    while True:
+        _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
+        print()
+        print(margen + c(f" {_titulo.strip()}".ljust(ancho), "bold"))
+        print(margen + c("\u2500" * ancho, "dim"))
+        for _i, _e in enumerate(_scores_e, 1):
+            _et = _e.display_handle if modo == "global" else _e.handle
+            color = "amarB" if _e.score == puntos else "blanco"
+            print(margen + f"  {_i:>2}. {c(_et.ljust(14), color, 'bold')} {c(str(_e.score).rjust(8), color)}  {c(_e.date, 'dim')}")
+        print()
+        try:
+            _r = input(margen + c("  [L] local   [G] global   [Enter] continuar: ", "dim")).strip().upper()
+        except EOFError:
+            break
+        if _r == "L":
+            modo = "local"
+            continue
+        if _r == "G":
+            modo = "global"
+            continue
+        break
 
 
 def jugar():

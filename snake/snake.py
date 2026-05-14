@@ -354,21 +354,30 @@ def pantalla_final(puntos, longitud, muerte):
         bbs_scores.save_local(nombre, puntos, max_top=MAX_TOP, ascending=ASCENDING)
         bbs_scores.submit(nombre, puntos)
         bbs_scores.invalidate_cache()
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
-    else:
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
 
-    print()
-    print(margen + c("  TOP 10".ljust(ancho), "bold"))
-    print(margen + c("\u2500" * ancho, "dim"))
-    for i, (n, p, d) in enumerate(scores, 1):
-        color = "amarB" if p == puntos else "blanco"
-        print(margen + f"  {i:>2}. {c(n, color, 'bold')}  {c(str(p).rjust(8), color)}  {c(d, 'dim')}")
-    print()
-    try:
-        input(margen + c("  Pulsa Enter para salir...", "dim"))
-    except EOFError:
-        pass
+    # Toggle [L]ocal / [G]lobal
+    modo = "local"
+    while True:
+        scores_e, titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
+        print()
+        print(margen + c(f" {titulo.strip()}".ljust(ancho), "bold"))
+        print(margen + c("\u2500" * ancho, "dim"))
+        for i, e in enumerate(scores_e, 1):
+            etiqueta = e.display_handle if modo == "global" else e.handle
+            color = "amarB" if e.score == puntos else "blanco"
+            print(margen + f"  {i:>2}. {c(etiqueta.ljust(14), color, 'bold')} {c(str(e.score).rjust(8), color)}  {c(e.date, 'dim')}")
+        print()
+        try:
+            raw = input(margen + c("  [L] local   [G] global   [Enter] continuar: ", "dim")).strip().upper()
+        except EOFError:
+            break
+        if raw == "L":
+            modo = "local"
+            continue
+        if raw == "G":
+            modo = "global"
+            continue
+        break
 
 
 # ---------- juego ----------

@@ -1089,10 +1089,25 @@ def main():
             bbs_scores.submit(nombre, est.turnos)
             bbs_scores.invalidate_cache()
             scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
-        if scores:
-            print(c("\n  TOP 10 (menos turnos = mejor):", "cyanB", "bold"))
-            for i, (n, p, d) in enumerate(scores, 1):
-                print(c(f"  {i:>2}. {n}   {p:>4} turnos   {d}", "blanco"))
+        # Toggle [L]ocal / [G]lobal del top mundial
+        modo = "local"
+        while True:
+            _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
+            print(c(f"\n  {_titulo.strip()} (menos turnos = mejor):", "cyanB", "bold"))
+            for _i, _e in enumerate(_scores_e, 1):
+                _et = _e.display_handle if modo == "global" else _e.handle
+                print(c(f"  {_i:>2}. {_et:<14}  {_e.score:>4} turnos   {_e.date}", "blanco"))
+            try:
+                _r = input(c("\n  [L] local   [G] global   [Enter] continuar: ", "dim")).strip().upper()
+            except EOFError:
+                break
+            if _r == "L":
+                modo = "local"
+                continue
+            if _r == "G":
+                modo = "global"
+                continue
+            break
     print()
 
 
