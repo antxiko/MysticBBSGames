@@ -481,6 +481,49 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Clon de Breakout/Arkanoid. Paleta abajo, bola que rebota,',
+    '  un muro de 228 ladrillos coloreados arriba. Rompe todos.',
+    '',
+    ('CONTROLES (char-mode, toggle continuo)', 'cyanB', 'bold'),
+    '  A   mover paleta a la izquierda (toggle on/off)',
+    '  D   mover paleta a la derecha (toggle on/off)',
+    '  Q   salir',
+    '  Pulsa la misma direccion otra vez para detener,',
+    '  o la opuesta para cambiar de sentido.',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  3 vidas. Si la bola se cae por abajo, pierdes una vida.',
+    '  Los ladrillos dan distintos puntos por fila:',
+    '  50 / 40 / 30 / 20 / 15 / 10 (de arriba abajo).',
+    '  Cada nivel completo aumenta la velocidad.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Romper todos los ladrillos. Top 10 por puntuacion.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - BREAKOUT BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -497,12 +540,14 @@ def splash():
     print(_caja_linea_splash("Rompe todos los ladrillos sin perder la bola.", ancho, "cyanB"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "cyanB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(score, nivel):

@@ -419,6 +419,50 @@ def _caja_linea(texto, ancho, color_txt, color_caja="magentaB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Simon dice. La maquina ilumina una secuencia de cuadrantes',
+    '  de colores. Tu la repites en el mismo orden.',
+    '  Cada nivel acertado añade un paso y aumenta la velocidad.',
+    '',
+    ('CONTROLES (char-mode)', 'cyanB', 'bold'),
+    '  Las teclas QWAS estan en disposicion 2x2 sobre el teclado,',
+    '  igual que los cuadrantes en la pantalla:',
+    '',
+    '    Q = ROJO       W = VERDE',
+    '    A = AZUL       S = AMARILLO',
+    '',
+    '  ESC / Ctrl-C    abandonar partida',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  Cada nivel: la secuencia aumenta en 1 y el tiempo de flash baja.',
+    '  Un fallo termina la partida.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Llegar lo mas lejos posible. Top 10 por nivel alcanzado.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - SIMON BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -438,12 +482,14 @@ def splash():
     print(_caja_linea("ESC para abandonar la partida", ancho, "dim"))
     print(_caja_linea("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "magentaB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(nivel, top_entered, scores, nombre_guardado=None):

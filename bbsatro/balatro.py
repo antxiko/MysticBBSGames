@@ -709,6 +709,52 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("\u2551", color_caja) + cuerpo + c("\u2551", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Deckbuilder inspirado en Balatro. Juegas manos de poker',
+    '  para superar una puntuacion objetivo por ronda.',
+    '  Pasas 5 boss blinds con efectos especiales.',
+    '',
+    ('CONTROLES (char-mode)', 'cyanB', 'bold'),
+    '  1-8        seleccionar / deseleccionar carta de la mano',
+    '  J          jugar las cartas seleccionadas',
+    '  D          descartar las seleccionadas (limite 3 por ronda)',
+    '  S          ordenar mano por rango / por palo',
+    '  Q          salir',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  Cada tipo de mano (par, trio, escalera, etc) tiene chips * mult.',
+    '  Cada carta jugada suma sus chips al base.',
+    '  Los jokers (en tienda entre rondas) modifican chips/mult.',
+    '  Upgrade automatico al jugar el mismo tipo de mano.',
+    '  Economia: oro al ganar, interes 1$ por cada 5$ guardados.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Pasar las 24 rondas (5 antes-2 antes-Boss x 8 niveles).',
+    '  Top 10 por dinero total.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - BBSATRO (balatro)".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -723,12 +769,14 @@ def splash():
     print(_caja_linea_splash("Supera el objetivo cada ronda con tus manos.", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("\u255A" + "\u2550" * ancho + "\u255D", "verdeB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(partida, ronda_st, victoria):

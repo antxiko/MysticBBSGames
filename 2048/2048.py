@@ -469,6 +469,48 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Clon del puzzle 2048. Tablero 4x4 de baldosas con potencias de 2.',
+    '  Deslizas todas las baldosas en una direccion; las que chocan se',
+    '  fusionan si son iguales. Cada turno aparece una nueva baldosa.',
+    '',
+    ('CONTROLES (char-mode)', 'cyanB', 'bold'),
+    '  W A S D / flechas    deslizar en esa direccion',
+    '  R                    reiniciar partida',
+    '  Q                    salir',
+    '',
+    ('COLORES POR VALOR', 'cyanB', 'bold'),
+    '  2 - 64       blanco / amarillo',
+    '  128 - 1024   rojo / magenta',
+    '  2048+        verde brillante',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Llegar a 2048. Puedes seguir jugando despues para mas score.',
+    '  Top 10 por puntuacion.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - 2048 BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -486,12 +528,14 @@ def splash():
     print(_caja_linea_splash("WASD o flechas para deslizar.", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "verdeB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(score, mejor_anterior, max_baldosa, victoria):

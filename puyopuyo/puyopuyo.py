@@ -493,6 +493,51 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Clon de Puyo Puyo. Tablero 6x12. Caen pares de puyos de 5 colores.',
+    '  4 o mas del mismo color conectados explotan. Al caer puyos sobre',
+    '  los huecos puedes encadenar explosiones; cada eslabon multiplica',
+    '  la puntuacion.',
+    '',
+    ('CONTROLES (char-mode)', 'cyanB', 'bold'),
+    '  A / flecha izquierda   mover pareja izquierda',
+    '  D / flecha derecha     mover pareja derecha',
+    '  S / flecha abajo       soft drop (baja un poco)',
+    '  Espacio                rotar pareja',
+    '  W / flecha arriba      hard drop (cae instantaneo)',
+    '  Q                      salir',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  Real-time, la caida acelera con el nivel.',
+    '  Cadenas de 2 = x2, 3 = x4, 4 = x8 al score.',
+    '  Si la pieza nueva no cabe en el spawn, game over.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Sobrevivir y encadenar. Top 10 persistente.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - PUYO PUYO BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -510,12 +555,14 @@ def splash():
     print(_caja_linea_splash("Encadena explosiones para multiplicar puntos.", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "magentaB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(score, nivel, eliminados, max_cadena):

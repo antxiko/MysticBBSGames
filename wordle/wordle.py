@@ -277,6 +277,48 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("\u2551", color_caja) + cuerpo + c("\u2551", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Adivina una palabra de 5 letras en español en 6 intentos.',
+    '  ~300 palabras en el diccionario.',
+    '',
+    ('CONTROLES (line-mode + Enter)', 'cyanB', 'bold'),
+    '  Tecleas una palabra de 5 letras y pulsas Enter.',
+    '  Debe ser una palabra valida del diccionario.',
+    '',
+    ('FEEDBACK por letra', 'cyanB', 'bold'),
+    '  Verde:    letra correcta en posicion correcta.',
+    '  Amarillo: letra existe en la palabra, otra posicion.',
+    '  Gris:     letra no esta en la palabra.',
+    '',
+    '  El teclado en pantalla muestra el estado acumulado de cada letra.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Adivinar en el minimo de intentos.',
+    '  Top 10 por menor numero de intentos.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - WORDLE BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     ancho = 60
@@ -293,12 +335,14 @@ def splash():
     print(_caja_linea_splash("Verde = bien. Amarillo = mal lugar. Gris = no esta.", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("\u255A" + "\u2550" * ancho + "\u255D", "verdeB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(puntos_total, partidas, ganadas):

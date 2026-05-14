@@ -922,6 +922,54 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("\u2551", color_caja) + cuerpo + c("\u2551", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Roguelike turn-based. Baja 10 niveles de mazmorra procedural,',
+    '  mata al Dragon, coge el Amuleto de Yendor y vuelve a la superficie.',
+    '',
+    ('CONTROLES (char-mode)', 'cyanB', 'bold'),
+    '  W A S D / flechas    mover (bump a enemigo = atacar)',
+    '  . / espacio          esperar un turno',
+    '  E                    usar escaleras',
+    '  I                    abrir inventario (1-9 usar, Q cerrar)',
+    '  Q                    salir',
+    '',
+    ('TILES', 'cyanB', 'bold'),
+    '  @ tu       # muro      . suelo      > escaleras',
+    '  r g s G o T O D  enemigos (segun nivel)',
+    '  $ oro    ! pocion    / arma    [ armadura    ? scroll',
+    '  & amuleto    ^ trampa descubierta',
+    '',
+    ('SCROLLS', 'cyanB', 'bold'),
+    '  Fuego: 15 daño a todos los enemigos adyacentes.',
+    '  Teletransporte: te mueve a casilla aleatoria.',
+    '  Mapeo: revela todo el terreno del nivel.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Volver al nivel 0 con el Amuleto. Score = oro + xp*2 + 1000 si ganas.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - MAZE BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -939,12 +987,14 @@ def splash():
     print(_caja_linea_splash("Baja niveles, mata bichos, coge loot.", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("\u255A" + "\u2550" * ancho + "\u255D", "verdeB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(player, nivel_mazmorra, victoria):

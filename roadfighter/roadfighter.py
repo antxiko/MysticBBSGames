@@ -431,6 +431,51 @@ def _caja_linea(texto, ancho, color_txt, color_caja="magentaB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Racer cenital inspirado en Road Fighter (Konami, 1984).',
+    '  Carretera que serpentea horizontalmente. Esquiva coches enemigos',
+    '  que caen desde arriba. Casas y arboles a los lados marcan velocidad.',
+    '  Time-attack 60 segundos.',
+    '',
+    ('CONTROLES', 'cyanB', 'bold'),
+    '  W   toggle gas',
+    '  S   pulso de freno',
+    '  A   toggle giro izquierda',
+    '  D   toggle giro derecha',
+    '  Q   salir',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  Como mucho 2 enemigos simultaneos para no saturar el modem.',
+    '  Choque con enemigo: speed cae a 30 km/h. -80 puntos.',
+    '  Adelantar enemigo (que salga por abajo): +50 puntos.',
+    '  Fuera de pista: speed cae a 90 km/h.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Score = distancia + adelantamientos*50 - choques*80.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - ROAD FIGHTER BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -450,12 +495,14 @@ def splash():
     print(_caja_linea("W gas    S freno    A/D girar    Q salir", ancho, "amarB"))
     print(_caja_linea("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "magentaB"))
-    msg = "Pulsa Enter para arrancar..."
+    msg = "[Enter] arrancar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(dist, overtakes, crashes, score, top_entered, scores, nombre_guardado=None):

@@ -983,6 +983,50 @@ def _caja_linea(texto, ancho, color_txt, color_caja="magentaB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Aventura conversacional ambientada en Madrid 1985 (la Movida).',
+    '  Sabado noche. Hay after kinky-punk secreto en una nave de Vallecas.',
+    '  El portero te pide tres cosas para dejarte pasar.',
+    '  22 habitaciones, 11 personajes, 3 cadenas de puzzles.',
+    '',
+    ('CONTROLES (line-mode + Enter)', 'cyanB', 'bold'),
+    '  Escribes en español comandos verbo+sustantivo, p.ej:',
+    '    coger porro      dar maquillaje      hablar      mirar',
+    '    ir norte / n     ir abajo / ab       inventario / i',
+    '',
+    ('VERBOS', 'cyanB', 'bold'),
+    '  ir, coger, dejar, mirar, examinar, inventario, hablar,',
+    '  dar, usar, leer, fumar, pegar, esperar, ayuda, salir.',
+    '  Sinonimos castizos: pillar, birlar, preguntar, entregar...',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Conseguir las 3 cosas para entrar al after:',
+    '  un objeto raro, 5.000 pelas y la palabra de paso.',
+    '  Top 10 por menor numero de turnos.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - MOVIDA".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     ancho = 60
@@ -999,12 +1043,14 @@ def splash():
     print(_caja_linea("Escribe AYUDA en cualquier momento.", ancho, "dim"))
     print(_caja_linea("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "magentaB"))
-    msg = "Pulsa Enter para empezar la noche..."
+    msg = "[Enter] empezar la noche     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(est):

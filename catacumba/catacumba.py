@@ -639,6 +639,51 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="magentaB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Dungeon pseudo-3D con raycasting puro en ASCII.',
+    '  Mazmorra 12x12 procedural infestada de ratas asesinas.',
+    '  Encuentra la salida E sin morir.',
+    '',
+    ('CONTROLES (char-mode, real-time)', 'cyanB', 'bold'),
+    '  W / flecha arriba       avanzar',
+    '  S / flecha abajo        retroceder',
+    '  A / flecha izquierda    girar a la izquierda',
+    '  D / flecha derecha      girar a la derecha',
+    '  Espacio                 disparar',
+    '  Q                       salir',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  Vista 3D 78x18 + minimapa con niebla de guerra.',
+    '  Solo ves en el mapa lo que tus rayos han iluminado.',
+    '  HP 100. Las ratas muerden -8 HP si estan adyacentes.',
+    '  El disparo es un raycast con hitbox 0.35 y respeta muros.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Llegar a la casilla E con HP > 0. Salir vivo, no hay top.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - CATACUMBA BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -658,12 +703,14 @@ def splash():
     print(_caja_linea_splash("WASD para moverte    SPACE para disparar    Q para huir", ancho, "amarB"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "magentaB"))
-    msg = "Pulsa Enter para entrar a la catacumba..."
+    msg = "[Enter] entrar a la catacumba     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_victoria(pasos, tiempo, kills, total):

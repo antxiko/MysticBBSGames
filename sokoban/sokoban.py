@@ -518,6 +518,49 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Clon de Sokoban. 10 niveles a mano de dificultad creciente.',
+    '  Empujas cajas hacia las marcas. No puedes tirar de las cajas.',
+    '',
+    ('CONTROLES (char-mode)', 'cyanB', 'bold'),
+    '  W A S D / flechas    mover',
+    '  U                    undo (deshacer ultimo movimiento)',
+    '  R                    reiniciar nivel',
+    '  N                    saltar al siguiente nivel',
+    '  Q                    salir',
+    '',
+    ('TILES', 'cyanB', 'bold'),
+    '  @ tu     # muro     . suelo     $ caja     o marca',
+    '  Caja sobre marca = caja iluminada.',
+    '',
+    ('PUNTUACION', 'cyanB', 'bold'),
+    '  Por nivel: 100 - movimientos (minimo 10).',
+    '  Total acumulado de todos los niveles completados.',
+    '  Top 10 persistente.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - SOKOBAN BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -535,12 +578,14 @@ def splash():
     print(_caja_linea_splash("Solo empujar, nunca tirar. Pensar antes de empujar.", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "verdeB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(score_total, niveles_resueltos, abandono):

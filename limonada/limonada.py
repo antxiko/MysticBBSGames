@@ -374,6 +374,49 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="amarB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Clon en castellano de Lemonade Stand (Bob Jamison, 1973).',
+    '  Llevas un puesto de limonada durante 30 dias.',
+    '  Empiezas con $2.00. Coste por vaso: $0.02. Anuncio: $0.15.',
+    '',
+    ('CONTROLES (line-mode + Enter)', 'cyanB', 'bold'),
+    '  En cada prompt introduces un numero y pulsas Enter.',
+    '  Q en cualquier prompt   abandonar la partida.',
+    '',
+    ('CICLO DIARIO', 'cyanB', 'bold'),
+    '  1) Parte meteorologico (afecta a la demanda).',
+    '  2) Decisiones: vasos a preparar, precio, numero de anuncios.',
+    '  3) Simulacion del dia y resultados.',
+    '',
+    ('EVENTOS', 'cyanB', 'bold'),
+    '  ~1 dia de cada 5: festival, manifestacion, viral, apagon, etc.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Maximizar la caja al final del dia 30. Top 10 persistente.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - LIMONADA BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     ancho = 70
@@ -390,12 +433,14 @@ def splash():
     print(_caja_linea_splash("Hazte rico vendiendo vasos a 10 centimos.", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "amarB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(dinero, dias_completos):

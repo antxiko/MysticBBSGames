@@ -284,6 +284,48 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("\u2551", color_caja) + cuerpo + c("\u2551", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  La serpiente de toda la vida. Real-time a 10 FPS.',
+    '  Comes comida, creces. Si te muerdes o chocas con la pared, mueres.',
+    '',
+    ('CONTROLES (char-mode, sin Enter)', 'cyanB', 'bold'),
+    '  W / flecha arriba       subir',
+    '  S / flecha abajo        bajar',
+    '  A / flecha izquierda    izquierda',
+    '  D / flecha derecha      derecha',
+    '  Q                       salir',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  No puedes dar marcha atras directa (180 grados).',
+    '  Cada comida (*) suma 1 al cuerpo y 10 al score.',
+    '  La velocidad es constante; lo dificil es no chocar con tu cola.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Comer todo lo que puedas. Top 10 persistente.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - SNAKE BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     ancho = 60
@@ -300,12 +342,14 @@ def splash():
     print(_caja_linea_splash("Come, crece, no choques.", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("\u255A" + "\u2550" * ancho + "\u255D", "verdeB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(puntos, longitud, muerte):

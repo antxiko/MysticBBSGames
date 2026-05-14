@@ -414,6 +414,49 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("\u2551", color_caja) + cuerpo + c("\u2551", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Buscaminas clasico. Revela todas las casillas seguras',
+    '  sin pisar ninguna mina. Los numeros indican cuantas minas',
+    '  hay en las 8 casillas vecinas.',
+    '  La primera revelacion nunca es mina.',
+    '',
+    ('CONTROLES (char-mode)', 'cyanB', 'bold'),
+    '  W A S D / flechas    mover cursor',
+    '  Espacio              revelar casilla',
+    '  F                    poner/quitar bandera',
+    '  Q                    salir',
+    '',
+    ('DIFICULTADES', 'cyanB', 'bold'),
+    '  Principiante: 9x9,    10 minas',
+    '  Intermedio:   16x16,  40 minas',
+    '  Experto:      30x16,  99 minas',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Revelar todas las casillas seguras. Top 10 por tiempo.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - BUSCAMINAS BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -431,12 +474,14 @@ def splash():
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("\u255A" + "\u2550" * ancho + "\u255D", "verdeB"))
     print()
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def menu_dificultad():

@@ -434,6 +434,49 @@ def _caja_linea(texto, ancho, color_txt, color_caja="magentaB"):
     return c("║", color_caja) + cuerpo + c("║", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Racer pseudo-3D inspirado en Out Run (Sega, 1986).',
+    '  Carretera con perspectiva, curvas que se interpolan fila a fila.',
+    '  Time-attack 90 segundos. Distancia = puntuacion.',
+    '',
+    ('CONTROLES (toggle / pulso)', 'cyanB', 'bold'),
+    '  W   toggle gas (arranca activado, pulsa para soltar)',
+    '  S   pulso de freno (cada tap = chorro de freno)',
+    '  A   toggle giro izquierda',
+    '  D   toggle giro derecha',
+    '  Q   salir',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  En curva, la inercia te empuja al exterior - compensa con A/D.',
+    '  Fuera de pista la velocidad se cae a 70 km/h con frenazo brutal.',
+    '  Indicadores [WSAD] en el HUD muestran estado activo.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Maxima distancia en 90s. Top 10 persistente.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - OUTRUN BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     sys.stdout.write(show_cursor(True))
@@ -453,12 +496,14 @@ def splash():
     print(_caja_linea("W acelerar    S frenar    A/D girar    Q salir", ancho, "amarB"))
     print(_caja_linea("", ancho, "blanco"))
     print(c("╚" + "═" * ancho + "╝", "magentaB"))
-    msg = "Pulsa Enter para arrancar..."
+    msg = "[Enter] arrancar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def pantalla_final(dist, top_entered, scores, nombre_guardado=None):

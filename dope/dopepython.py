@@ -604,6 +604,54 @@ def _caja_linea(texto, ancho, color_txt, color_caja="verdeB"):
     return c("\u2551", color_caja) + cuerpo + c("\u2551", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Clon de Dope Wars / Drug Wars (John E. Dell, 1984).',
+    '  30 dias. 12 drogas. 6 barrios de Nueva York.',
+    '  Empiezas con $2.000, deuda de $5.500, maletin 100, salud 100.',
+    '',
+    ('CONTROLES (line-mode + Enter)', 'cyanB', 'bold'),
+    '  C  Comprar droga del mercado del barrio',
+    '  V  Vender droga del maletin',
+    '  J  Viajar a otro barrio (consume 1 dia)',
+    '  $  Banco (solo en Bronx)',
+    '  P  Prestamista (solo en Bronx)',
+    '  R  Resumen del estado',
+    '  S  Salir',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  Los precios cambian cada dia, distintos por barrio.',
+    '  Interes diario: 10% sobre la deuda, 5% sobre el banco.',
+    '  Al viajar pueden saltar eventos: policia (luchar/huir), atracos,',
+    '  oferta de pistola, droga encontrada, ampliar maletin.',
+    '  Eventos de mercado: precio disparado o desplomado.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Maximizar dinero al final del dia 30.',
+    '  Puntuacion = efectivo + banco - deuda.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - DOPE WARS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     ancho = 60
@@ -620,12 +668,14 @@ def splash():
     print(_caja_linea("", ancho, "blanco"))
     print(c("\u255A" + "\u2550" * ancho + "\u255D", "verdeB"))
     print("")
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def jugar():

@@ -271,6 +271,49 @@ def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
     return c("\u2551", color_caja) + cuerpo + c("\u2551", color_caja)
 
 
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Clon de typespeed, clasico de mecanografia de Linux.',
+    '  Las palabras aparecen por la izquierda y cruzan la pantalla.',
+    '  Las tecleas antes de que lleguen al borde derecho.',
+    '  Si una palabra llega al borde derecho, pierdes una vida.',
+    '  3 vidas. La velocidad sube progresivamente.',
+    '',
+    ('CONTROLES', 'cyanB', 'bold'),
+    '  Tecleas la palabra completa y pulsas Enter.',
+    '  Las palabras estan en español neutro.',
+    '  Ctrl-C para abortar.',
+    '',
+    ('MECANICA', 'cyanB', 'bold'),
+    '  Cada palabra acertada = 10 puntos.',
+    '  Cada palabra que llega al borde = -1 vida.',
+    '  La velocidad de scroll y el ratio de spawn suben con el tiempo.',
+    '',
+    ('OBJETIVO', 'cyanB', 'bold'),
+    '  Sobrevivir lo maximo posible. Top 10 persistente.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - TYPESPEED BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
 def splash():
     cls()
     ancho = 76
@@ -287,12 +330,14 @@ def splash():
     print(_caja_linea_splash("Teclea las palabras antes de que crucen la pantalla", ancho, "blanco"))
     print(_caja_linea_splash("", ancho, "blanco"))
     print(c("\u255A" + "\u2550" * ancho + "\u255D", "verdeB"))
-    msg = "Pulsa Enter para empezar..."
+    msg = "[Enter] empezar     [M] manual"
     print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
     try:
-        input("")
+        raw = input("")
     except EOFError:
-        pass
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
 
 
 def cargar_scores():
