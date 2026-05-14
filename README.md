@@ -149,6 +149,14 @@ Aventura conversacional castiza-punk ambientada en Madrid 1985 (la Movida). Saba
 python3 movida/movida.py
 ```
 
+### [dino/](dino/) - Dino BBS
+
+Clon del runner del dinosaurio de Chrome offline. Saltas con espacio sobre cactus que vienen por la derecha. Suelo estatico, cielo estatico - solo se mueven los cactus, las patas del dino y los digitos del score. ~20 celdas cambiando por frame de media: el mas ligero de todos los real-time del repo, perfecto para BBS por modem.
+
+```
+python3 dino/dino.py
+```
+
 ## Requisitos
 
 - Python 3.7+ (para `sys.stdout.reconfigure`).
@@ -184,6 +192,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Road Fighter BBS | real-time cenital   | char-mode     | en pruebas        |
 | Simon BBS      | memoria turn-based    | char-mode     | en pruebas        |
 | Movida         | aventura conversacional | line-mode   | en pruebas        |
+| Dino BBS       | real-time runner      | char-mode     | en pruebas        |
 
 ## Licencia
 
