@@ -157,11 +157,31 @@ Clon del runner del dinosaurio de Chrome offline. Saltas con espacio sobre cactu
 python3 dino/dino.py
 ```
 
+## Scoreboard global
+
+Los juegos pueden ademas subir las puntuaciones a un servidor central para que varias BBSes se peleen por el top mundial. En el final de partida, pulsando `G` se ve el top global y `L` vuelve al local. Si no hay config de servidor o no hay conexion, todo cae a modo local solo y el juego sigue funcionando igual que sin scoreboard.
+
+Arquitectura:
+
+- **Server**: FastAPI + SQLite en un VPS. Endpoints en [server/](server/). Cada BBS se registra con un token. Auth por Bearer token (no se pueden falsificar BBSes).
+- **Cliente compartido**: [`bbs_scores.py`](bbs_scores.py) en la raiz del repo. Cada juego lo importa y llama `submit()` al perder, `top_local()` y `top_global()` para mostrar. Fail-safe: si la red cae, los submits se reencolan en `pending_submissions.jsonl` y se reintentan.
+- **Panel admin web** en `/admin/` del servidor (HTTP Basic Auth). Listar BBSes, añadir nuevas (con generacion de token one-shot), desactivar, rotar token, borrar con cascade.
+- **Instancia de referencia**: la primera BBS en el repo se llama **No Signal BBS** y el server vive en `https://scores.nosignalbbs.com`.
+
+Para deployar:
+
+- **Servidor VPS**: ver [INSTALL_VPS.md](INSTALL_VPS.md) (sirve para Debian/Ubuntu con Caddy o nginx).
+- **BBS / Mystic**: ver [INSTALL_MYSTIC.md](INSTALL_MYSTIC.md) (clonar repo + dropear `scores_config.json` con el token que te de el admin del VPS).
+
+Identidad: los jugadores siguen escribiendo 3 iniciales en sus tops. En el global se muestran como `INICIALES@BBS` (ej. `AGM@NOSIGNAL`) para distinguir entre BBSes.
+
 ## Requisitos
 
-- Python 3.7+ (para `sys.stdout.reconfigure`).
+- **Python 3.10+** (los juegos en si funcionan en 3.7+, pero el cliente del scoreboard global `bbs_scores.py` usa generics nativos y union types - `list[X]`, `str | None`).
 - Terminal ANSI/CP437. En Mystic se lanza como door externo (`python3 ruta/juego.py`).
-- `snake.py`, `buscaminas.py`, `maze.py`, `balatro.py` y `2048.py` requieren TTY con `termios` (Unix / Mystic via PTY) para input char-a-char.
+- La mayoria de juegos char-mode requieren TTY con `termios` (Unix / Mystic via PTY) para input char-a-char.
+- Sin scoreboard global: stdlib pura, cero dependencias.
+- Con scoreboard global: stdlib en el cliente, y FastAPI + uvicorn en el server (ver [server/requirements.txt](server/requirements.txt)).
 
 ## Deploy en Mystic
 
