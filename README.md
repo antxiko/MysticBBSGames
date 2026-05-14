@@ -233,6 +233,12 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Movida         | aventura conversacional | line-mode   | si, OK            |
 | Dino BBS       | real-time runner      | char-mode     | si, OK            |
 
+## Agradecimientos
+
+Gracias a **X1Pepe** (SysOp de **Sotano MSX BBS**) por la ayuda con el testeo
+de los juegos, las ideas para mejorarlos y la base del servicio de
+puntuaciones globales compartidas entre BBSes.
+
 ## Licencia
 
 MIT. Ver [LICENSE](LICENSE).
