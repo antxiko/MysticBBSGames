@@ -34,3 +34,6 @@ scores_config.json
 pending_submissions.jsonl
 server/data/
 .venv-server/
+
+# Documentos locales con secretos (tokens de cada BBS)
+*.local.md
