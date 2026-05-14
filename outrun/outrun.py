@@ -517,7 +517,7 @@ def pantalla_final(dist, top_entered, scores, nombre_guardado=None):
     print(margen + c("╔" + linea + "╗", "magentaB"))
     print(margen + lado + c(" CARRERA TERMINADA ".center(ancho), "amarB", "bold") + lado)
     print(margen + c("╠" + linea + "╣", "magentaB"))
-    print(margen + lado + f"  Distancia recorrida : {c(str(int(dist)).rjust(15) + ' m', 'verdeB', 'bold')}".ljust(ancho + 12) + lado)
+    print(margen + lado + f"  Distancia recorrida : {c(str(int(dist)).rjust(15) + ' m', 'verdeB', 'bold')}".ljust(ancho + 15) + lado)
     if top_entered:
         print(margen + lado + f"  {c('NUEVO RECORD!'.center(ancho - 4), 'amarB', 'bold')}  " + lado)
     print(margen + c("╠" + linea + "╣", "magentaB"))

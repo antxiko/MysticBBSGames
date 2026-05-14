@@ -51,15 +51,16 @@ MAX_TOP = 10
 
 # fisicas
 GRAVITY = 40.0
-JUMP_VEL = 24.0
+JUMP_VEL = 22.0
 SPEED_INI = 14.0  # cols/seg al comienzo
 SPEED_MAX = 38.0
-SPEED_ACEL = 0.5  # cols/seg^2
+SPEED_ACEL = 0.8  # cols/seg^2 - de 14 a 38 en ~30s
 
 # spawn
 SPAWN_MIN = 1.1
 SPAWN_MAX = 2.6
 SPAWN_GAP_MIN_COLS = 12  # distancia minima entre cactus al spawnear
+MAX_CACTUS = 2  # como mucho 2 cactus simultaneos en pantalla
 
 FPS = 20
 FRAME_DT = 1.0 / FPS
@@ -468,8 +469,8 @@ def pantalla_final(score, hi_score, top_entered, scores, nombre_guardado=None):
     print(margen + c("╔" + linea + "╗", "magentaB"))
     print(margen + lado + c(" GAME OVER ".center(ancho), "rojoB", "bold") + lado)
     print(margen + c("╠" + linea + "╣", "magentaB"))
-    print(margen + lado + f"  Score        : {c(str(score).rjust(15) + '  ', 'cyanB', 'bold')}".ljust(ancho + 12) + lado)
-    print(margen + lado + f"  Mejor previo : {c(str(hi_score).rjust(15) + '  ', 'amarB', 'bold')}".ljust(ancho + 12) + lado)
+    print(margen + lado + f"  Score        : {c(str(score).rjust(15) + '  ', 'cyanB', 'bold')}".ljust(ancho + 15) + lado)
+    print(margen + lado + f"  Mejor previo : {c(str(hi_score).rjust(15) + '  ', 'amarB', 'bold')}".ljust(ancho + 15) + lado)
     if top_entered:
         print(margen + lado + c("  ¡NUEVO RECORD!".center(ancho), "amarB", "bold") + lado)
     print(margen + c("╠" + linea + "╣", "magentaB"))
@@ -576,8 +577,8 @@ def jugar(hi_score):
         # spawn
         next_spawn -= dt
         if next_spawn <= 0:
-            # comprobar gap minimo
-            ok = True
+            # cap a MAX_CACTUS y gap minimo entre cactus
+            ok = len(obstaculos) < MAX_CACTUS
             for o in obstaculos:
                 if o["x"] > COLS - SPAWN_GAP_MIN_COLS:
                     ok = False

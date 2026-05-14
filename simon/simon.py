@@ -503,7 +503,7 @@ def pantalla_final(nivel, top_entered, scores, nombre_guardado=None):
     print(margen + c("╔" + linea + "╗", "magentaB"))
     print(margen + lado + c(" FIN DE PARTIDA ".center(ancho), "amarB", "bold") + lado)
     print(margen + c("╠" + linea + "╣", "magentaB"))
-    print(margen + lado + f"  Nivel alcanzado : {c(str(nivel).rjust(15) + '  ', 'cyanB', 'bold')}".ljust(ancho + 12) + lado)
+    print(margen + lado + f"  Nivel alcanzado : {c(str(nivel).rjust(15) + '  ', 'cyanB', 'bold')}".ljust(ancho + 15) + lado)
     if top_entered:
         print(margen + lado + c("  ¡NUEVO RECORD!".center(ancho), "amarB", "bold") + lado)
     print(margen + c("╠" + linea + "╣", "magentaB"))
