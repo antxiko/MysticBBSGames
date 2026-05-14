@@ -312,7 +312,6 @@ def splash():
 
 
 def pantalla_final(puntos, longitud, muerte):
-    cls()
     ancho = 50
     margen = " " * ((COLS - (ancho + 2)) // 2)
     linea = "\u2550" * ancho
@@ -330,17 +329,21 @@ def pantalla_final(puntos, longitud, muerte):
         pad = ancho - len(plano)
         return margen + lado + prefijo + c(val, col, "bold") + " " * pad + lado
 
-    print()
-    print(margen + c("\u2554" + linea + "\u2557", "rojoB"))
-    print(fila_centrada("GAME OVER", "bold"))
-    print(margen + c("\u2560" + linea + "\u2563", "rojoB"))
-    print(fila_centrada(muerte, "amar"))
-    print(margen + c("\u2560" + linea + "\u2563", "rojoB"))
-    print(fila_kv("Puntos finales : ", str(puntos).rjust(10), "verdeB"))
-    print(fila_kv("Longitud final : ", str(longitud).rjust(10), "cyanB"))
-    print(margen + c("\u255A" + linea + "\u255D", "rojoB"))
-    print()
+    def dibujar_resumen():
+        cls()
+        print()
+        print(margen + c("\u2554" + linea + "\u2557", "rojoB"))
+        print(fila_centrada("GAME OVER", "bold"))
+        print(margen + c("\u2560" + linea + "\u2563", "rojoB"))
+        print(fila_centrada(muerte, "amar"))
+        print(margen + c("\u2560" + linea + "\u2563", "rojoB"))
+        print(fila_kv("Puntos finales : ", str(puntos).rjust(10), "verdeB"))
+        print(fila_kv("Longitud final : ", str(longitud).rjust(10), "cyanB"))
+        print(margen + c("\u255A" + linea + "\u255D", "rojoB"))
+        print()
 
+    dibujar_resumen()
+    nombre_guardado = None
     if bbs_scores.entra_en_top_local(puntos, max_top=MAX_TOP, ascending=ASCENDING):
         print(margen + c("  [ENTRAS EN EL TOP 10]", "amarB", "bold"))
         print()
@@ -354,12 +357,16 @@ def pantalla_final(puntos, longitud, muerte):
         bbs_scores.save_local(nombre, puntos, max_top=MAX_TOP, ascending=ASCENDING)
         bbs_scores.submit(nombre, puntos)
         bbs_scores.invalidate_cache()
+        nombre_guardado = nombre
 
-    # Toggle [L]ocal / [G]lobal
+    # Toggle [L]ocal / [G]lobal: cada iteracion redibuja todo desde cero
     modo = "local"
     while True:
+        dibujar_resumen()
+        if nombre_guardado:
+            print(margen + c(f"  [Acabas de entrar en el TOP como {nombre_guardado}]", "amarB"))
+            print()
         scores_e, titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
-        print()
         print(margen + c(f" {titulo.strip()}".ljust(ancho), "bold"))
         print(margen + c("\u2500" * ancho, "dim"))
         for i, e in enumerate(scores_e, 1):

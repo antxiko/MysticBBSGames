@@ -1092,8 +1092,10 @@ def main():
         # Toggle [L]ocal / [G]lobal del top mundial
         modo = "local"
         while True:
+            cls()  # redibuja limpio para que no se acumulen tops
+            print()
             _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
-            print(c(f"\n  {_titulo.strip()} (menos turnos = mejor):", "cyanB", "bold"))
+            print(c(f"  {_titulo.strip()} (menos turnos = mejor):", "cyanB", "bold"))
             for _i, _e in enumerate(_scores_e, 1):
                 _et = _e.display_handle if modo == "global" else _e.handle
                 print(c(f"  {_i:>2}. {_et:<14}  {_e.score:>4} turnos   {_e.date}", "blanco"))

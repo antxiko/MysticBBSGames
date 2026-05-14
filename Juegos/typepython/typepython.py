@@ -347,7 +347,6 @@ def splash():
 
 
 def pantalla_final(puntos, nivel, aciertos):
-    cls()
     ancho = 50
     margen = " " * ((COLS - (ancho + 2)) // 2)
     linea = "\u2550" * ancho
@@ -365,16 +364,20 @@ def pantalla_final(puntos, nivel, aciertos):
         pad_r = pad_total - pad_l
         return margen + lado + " " * pad_l + c(texto, *estilos) + " " * pad_r + lado
 
-    print()
-    print(margen + c("\u2554" + linea + "\u2557", "rojoB"))
-    print(fila_centrada("FIN DE LA PARTIDA", "bold"))
-    print(margen + c("\u2560" + linea + "\u2563", "rojoB"))
-    print(fila_kv("Puntos finales : ", str(puntos).rjust(10), "verdeB"))
-    print(fila_kv("Nivel alcanzado: ", str(nivel).rjust(10), "amarB"))
-    print(fila_kv("Palabras OK    : ", str(aciertos).rjust(10), "cyanB"))
-    print(margen + c("\u255A" + linea + "\u255D", "rojoB"))
-    print()
+    def dibujar_resumen():
+        cls()
+        print()
+        print(margen + c("\u2554" + linea + "\u2557", "rojoB"))
+        print(fila_centrada("FIN DE LA PARTIDA", "bold"))
+        print(margen + c("\u2560" + linea + "\u2563", "rojoB"))
+        print(fila_kv("Puntos finales : ", str(puntos).rjust(10), "verdeB"))
+        print(fila_kv("Nivel alcanzado: ", str(nivel).rjust(10), "amarB"))
+        print(fila_kv("Palabras OK    : ", str(aciertos).rjust(10), "cyanB"))
+        print(margen + c("\u255A" + linea + "\u255D", "rojoB"))
+        print()
 
+    dibujar_resumen()
+    nombre_guardado = None
     if bbs_scores.entra_en_top_local(puntos, max_top=MAX_TOP, ascending=ASCENDING):
         print(margen + c("  [ENTRAS EN EL TOP 10]", "amarB", "bold"))
         print()
@@ -388,15 +391,16 @@ def pantalla_final(puntos, nivel, aciertos):
         bbs_scores.save_local(nombre, puntos, max_top=MAX_TOP, ascending=ASCENDING)
         bbs_scores.submit(nombre, puntos)
         bbs_scores.invalidate_cache()
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
-    else:
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+        nombre_guardado = nombre
 
-    # Toggle [L]ocal / [G]lobal del top mundial
+    # Toggle [L]ocal / [G]lobal: cada iteracion redibuja todo limpio
     modo = "local"
     while True:
+        dibujar_resumen()
+        if nombre_guardado:
+            print(margen + c(f"  [Acabas de entrar en el TOP como {nombre_guardado}]", "amarB"))
+            print()
         _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
-        print()
         print(margen + c(f" {_titulo.strip()}".ljust(ancho), "bold"))
         print(margen + c("\u2500" * ancho, "dim"))
         for _i, _e in enumerate(_scores_e, 1):

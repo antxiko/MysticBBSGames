@@ -1032,6 +1032,8 @@ def main():
                 if _r not in ("L", "G"):
                     break
                 _modo = "local" if _r == "L" else "global"
+                cls()  # toggle redibuja limpio
+                print()
                 _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(_modo, limit=MAX_TOP, ascending=ASCENDING)
                 print()
                 print(c("  " + _titulo.strip(), "cyanB", "bold"))

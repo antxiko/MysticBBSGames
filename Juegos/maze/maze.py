@@ -1010,12 +1010,12 @@ def pantalla_final(player, nivel_mazmorra, victoria):
             except EOFError:
                 raw = "AAA"
             nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
-        bbs_scores.save_local(nombre, puntos, nivel_mazmorra, max_top=MAX_TOP, ascending=ASCENDING)
-        bbs_scores.submit(nombre, puntos, nivel_mazmorra)
+        bbs_scores.save_local(nombre, puntos, extra={"nivel": nivel_mazmorra}, max_top=MAX_TOP, ascending=ASCENDING)
+        bbs_scores.submit(nombre, puntos, extra={"nivel": nivel_mazmorra})
         bbs_scores.invalidate_cache()
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+        scores = [(e.handle, e.score, e.extra.get("nivel", "?") if isinstance(e.extra, dict) else "?", e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
     else:
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+        scores = [(e.handle, e.score, e.extra.get("nivel", "?") if isinstance(e.extra, dict) else "?", e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
 
     print()
     print(margen + c("  TOP 10".ljust(ancho), "bold"))
@@ -1163,6 +1163,8 @@ def main():
                 if _r not in ("L", "G"):
                     break
                 _modo = "local" if _r == "L" else "global"
+                cls()  # toggle redibuja limpio
+                print()
                 _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(_modo, limit=MAX_TOP, ascending=ASCENDING)
                 print()
                 print(c("  " + _titulo.strip(), "cyanB", "bold"))
