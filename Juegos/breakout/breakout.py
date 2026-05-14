@@ -552,12 +552,12 @@ def pantalla_final(score, nivel):
             except EOFError:
                 raw = "AAA"
             nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
-        bbs_scores.save_local(nombre, score, nivel, max_top=MAX_TOP, ascending=ASCENDING)
-        bbs_scores.submit(nombre, score, nivel)
+        bbs_scores.save_local(nombre, score, extra={"nivel": nivel}, max_top=MAX_TOP, ascending=ASCENDING)
+        bbs_scores.submit(nombre, score, extra={"nivel": nivel})
         bbs_scores.invalidate_cache()
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+        scores = [(e.handle, e.score, (e.extra.get("nivel", "?") if isinstance(e.extra, dict) else "?"), e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
     else:
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+        scores = [(e.handle, e.score, (e.extra.get("nivel", "?") if isinstance(e.extra, dict) else "?"), e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
 
     print()
     print(margen + c("  TOP 10".ljust(ancho), "bold"))

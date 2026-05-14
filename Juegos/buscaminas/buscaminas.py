@@ -521,12 +521,12 @@ def pantalla_final(gano, puntos, tiempo, dif_nombre):
             except EOFError:
                 raw = "AAA"
             nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
-        bbs_scores.save_local(nombre, puntos, dif_nombre, max_top=MAX_TOP, ascending=ASCENDING)
-        bbs_scores.submit(nombre, puntos, dif_nombre)
+        bbs_scores.save_local(nombre, puntos, extra={"dif": dif_nombre}, max_top=MAX_TOP, ascending=ASCENDING)
+        bbs_scores.submit(nombre, puntos, extra={"dif": dif_nombre})
         bbs_scores.invalidate_cache()
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+        scores = [(e.handle, e.score, (e.extra.get("dif", "?") if isinstance(e.extra, dict) else "?"), e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
     else:
-        scores = [(e.handle, e.score, e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+        scores = [(e.handle, e.score, (e.extra.get("dif", "?") if isinstance(e.extra, dict) else "?"), e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
 
     print()
     print(margen + c("  TOP 10".ljust(ancho), "bold"))
