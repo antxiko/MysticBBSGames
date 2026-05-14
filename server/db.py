@@ -231,6 +231,51 @@ def list_games() -> list[str]:
         ).fetchall()]
 
 
+def list_scores(game: str | None = None, bbs_short: str | None = None,
+                handle: str | None = None, limit: int = 100) -> list[sqlite3.Row]:
+    """Listado de scores con filtros opcionales, ordenado por created_at DESC."""
+    where = ["1=1"]
+    params: list = []
+    if game:
+        where.append("s.game = ?")
+        params.append(game)
+    if bbs_short:
+        where.append("b.short_name = ?")
+        params.append(bbs_short.upper())
+    if handle:
+        where.append("s.handle LIKE ?")
+        params.append(handle.upper() + "%")
+    params.append(limit)
+    where_clause = " AND ".join(where)
+    with get_conn() as conn:
+        return conn.execute(
+            f"""SELECT s.id, s.game, s.handle, s.score, s.extra, s.created_at,
+                       b.short_name AS bbs_short_name
+                FROM scores s JOIN bbs b ON s.bbs_id = b.id
+                WHERE {where_clause}
+                ORDER BY s.created_at DESC, s.id DESC
+                LIMIT ?""",
+            params,
+        ).fetchall()
+
+
+def get_score(score_id: int) -> sqlite3.Row | None:
+    with get_conn() as conn:
+        return conn.execute(
+            """SELECT s.id, s.game, s.handle, s.score, s.extra, s.created_at,
+                      b.short_name AS bbs_short_name
+               FROM scores s JOIN bbs b ON s.bbs_id = b.id
+               WHERE s.id = ?""",
+            (score_id,),
+        ).fetchone()
+
+
+def delete_score(score_id: int) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM scores WHERE id = ?", (score_id,))
+        return cur.rowcount > 0
+
+
 def stats_globales() -> dict:
     """Resumen para la landing publica."""
     with get_conn() as conn:

@@ -130,6 +130,8 @@ async def home(admin=Depends(check_admin)):
              if rows_html else
              '<tr><td colspan="6" class="muted">No hay BBSes registradas todavia.</td></tr>')
     body = f"""
+<p><a href="/admin/scores/">Gestionar scores individuales &rarr;</a></p>
+
 <h2>BBSes registradas</h2>
 <table>
     <tr>
@@ -257,3 +259,87 @@ async def delete_do(short: str, admin=Depends(check_admin)):
 <p><a href="/admin/">Volver al panel</a></p>
 """
     return HTMLResponse(page(f"BBS {short.upper()} borrada", body, admin["username"]))
+
+
+# --- gestion de scores individuales ---
+
+@router.get("/scores/", response_class=HTMLResponse)
+async def scores_list(
+    admin=Depends(check_admin),
+    game: str = "",
+    bbs: str = "",
+    handle: str = "",
+):
+    rows = db.list_scores(
+        game=game or None,
+        bbs_short=bbs or None,
+        handle=handle or None,
+        limit=200,
+    )
+    games_all = db.list_games()
+    bbses_all = db.list_bbses()
+
+    # Opciones de los selects
+    game_opts = '<option value="">(cualquier juego)</option>' + "".join(
+        f'<option value="{_esc(g)}"{" selected" if g == game else ""}>{_esc(g)}</option>'
+        for g in games_all
+    )
+    bbs_opts = '<option value="">(cualquier BBS)</option>' + "".join(
+        f'<option value="{_esc(b["short_name"])}"{" selected" if b["short_name"] == bbs else ""}>{_esc(b["short_name"])}</option>'
+        for b in bbses_all
+    )
+
+    if not rows:
+        table_html = '<p class="muted">No hay scores que coincidan con el filtro.</p>'
+    else:
+        body_rows = []
+        for r in rows:
+            body_rows.append(f"""<tr>
+    <td>{r['id']}</td>
+    <td><b>{_esc(r['game'])}</b></td>
+    <td><span class="handle">{_esc(r['handle'])}</span><span class="bbs-tag">@{_esc(r['bbs_short_name'])}</span></td>
+    <td>{r['score']}</td>
+    <td class="muted">{_esc(r['created_at'])}</td>
+    <td>
+        <form method="post" action="/admin/scores/{r['id']}/delete" onsubmit="return confirm('Borrar score #{r['id']} ({_esc(r['handle'])} {r['score']})?')">
+            <button class="danger">Borrar</button>
+        </form>
+    </td>
+</tr>""")
+        table_html = f"""<table>
+<tr><th>ID</th><th>Juego</th><th>Jugador</th><th>Score</th><th>Fecha</th><th></th></tr>
+{''.join(body_rows)}
+</table>
+<p class="muted">Mostrando los {len(rows)} mas recientes que coinciden con el filtro.</p>"""
+
+    body = f"""
+<p><a href="/admin/">&larr; Volver al panel de BBSes</a></p>
+
+<h2>Filtrar scores</h2>
+<form method="get" action="/admin/scores/">
+    <label>Juego:</label>
+    <select name="game">{game_opts}</select>
+    &nbsp;&nbsp;
+    <label>BBS:</label>
+    <select name="bbs">{bbs_opts}</select>
+    &nbsp;&nbsp;
+    <label>Iniciales (prefix):</label>
+    <input type="text" name="handle" value="{_esc(handle)}" maxlength="10" style="width:6em">
+    &nbsp;&nbsp;
+    <input type="submit" value="Filtrar">
+</form>
+
+<h2>Scores</h2>
+{table_html}
+"""
+    return HTMLResponse(page("Gestion de scores", body, admin["username"]))
+
+
+@router.post("/scores/{score_id}/delete", response_class=HTMLResponse)
+async def score_delete(score_id: int, admin=Depends(check_admin)):
+    s = db.get_score(score_id)
+    if s is None:
+        raise HTTPException(404, f"Score #{score_id} no existe")
+    db.delete_score(score_id)
+    # Volver al listado preservando filtros si los hubiera (no lo intentamos por simpleza)
+    return RedirectResponse(f"/admin/scores/?game={s['game']}", status_code=303)
