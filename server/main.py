@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 from . import db
 from .auth import verify_token
 from .admin_web import router as admin_router
+from .public_web import router as public_router
 
 # El server no conoce los juegos. El orden lo decide el cliente con ?order=
 # (default 'desc'). El nombre de juego es un string opaco validado por regex.
@@ -40,6 +41,7 @@ app = FastAPI(
 
 
 app.include_router(admin_router)
+app.include_router(public_router)
 
 
 @app.on_event("startup")
@@ -109,6 +111,7 @@ async def get_scores(
     game: str,
     scope: Annotated[str, Query(pattern="^(global|bbs)$")] = "global",
     order: Annotated[str, Query(pattern="^(asc|desc)$")] = "desc",
+    period: Annotated[str, Query(pattern="^(all|week|month)$")] = "all",
     bbs: str | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 10,
 ):
@@ -117,9 +120,9 @@ async def get_scores(
     if scope == "bbs":
         if not bbs:
             raise HTTPException(status_code=400, detail="scope=bbs requires bbs param")
-        rows = db.top_scores_bbs(game, bbs, limit, ascending=ascending)
+        rows = db.top_scores_bbs(game, bbs, limit, ascending=ascending, period=period)
     else:
-        rows = db.top_scores_global(game, limit, ascending=ascending)
+        rows = db.top_scores_global(game, limit, ascending=ascending, period=period)
     return [
         ScoreOut(
             handle=r["handle"],

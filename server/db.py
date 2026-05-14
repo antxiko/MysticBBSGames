@@ -184,29 +184,61 @@ def insert_score(game: str, bbs_id: int, handle: str, score: int, extra: Optiona
         return cur.lastrowid
 
 
-def top_scores_global(game: str, limit: int = 10, ascending: bool = False) -> list[sqlite3.Row]:
-    """Top N a nivel global. Si ascending=True (movida), ordena ascendente."""
+PERIOD_FILTERS = {
+    "all": "",
+    "week": "AND s.created_at >= datetime('now', '-7 days')",
+    "month": "AND s.created_at >= datetime('now', '-30 days')",
+}
+
+
+def top_scores_global(game: str, limit: int = 10, ascending: bool = False,
+                     period: str = "all") -> list[sqlite3.Row]:
+    """Top N a nivel global. period: 'all' | 'week' | 'month'."""
     order = "ASC" if ascending else "DESC"
+    period_clause = PERIOD_FILTERS.get(period, "")
     with get_conn() as conn:
         return conn.execute(
             f"""SELECT s.handle, s.score, s.extra, s.created_at, b.short_name AS bbs_short_name
                 FROM scores s JOIN bbs b ON s.bbs_id = b.id
-                WHERE s.game = ?
+                WHERE s.game = ? {period_clause}
                 ORDER BY s.score {order}, s.created_at ASC
                 LIMIT ?""",
             (game, limit),
         ).fetchall()
 
 
-def top_scores_bbs(game: str, bbs_short_name: str, limit: int = 10, ascending: bool = False) -> list[sqlite3.Row]:
-    """Top N de una BBS concreta."""
+def top_scores_bbs(game: str, bbs_short_name: str, limit: int = 10, ascending: bool = False,
+                   period: str = "all") -> list[sqlite3.Row]:
+    """Top N de una BBS concreta. period: 'all' | 'week' | 'month'."""
     order = "ASC" if ascending else "DESC"
+    period_clause = PERIOD_FILTERS.get(period, "")
     with get_conn() as conn:
         return conn.execute(
             f"""SELECT s.handle, s.score, s.extra, s.created_at, b.short_name AS bbs_short_name
                 FROM scores s JOIN bbs b ON s.bbs_id = b.id
-                WHERE s.game = ? AND b.short_name = ?
+                WHERE s.game = ? AND b.short_name = ? {period_clause}
                 ORDER BY s.score {order}, s.created_at ASC
                 LIMIT ?""",
             (game, bbs_short_name.upper(), limit),
         ).fetchall()
+
+
+def list_games() -> list[str]:
+    """Distinct game names que tienen al menos un score."""
+    with get_conn() as conn:
+        return [r[0] for r in conn.execute(
+            "SELECT DISTINCT game FROM scores ORDER BY game"
+        ).fetchall()]
+
+
+def stats_globales() -> dict:
+    """Resumen para la landing publica."""
+    with get_conn() as conn:
+        bbs_activas = conn.execute("SELECT COUNT(*) FROM bbs WHERE enabled = 1").fetchone()[0]
+        scores_total = conn.execute("SELECT COUNT(*) FROM scores").fetchone()[0]
+        juegos = conn.execute("SELECT COUNT(DISTINCT game) FROM scores").fetchone()[0]
+        return {
+            "bbs_activas": bbs_activas,
+            "scores_total": scores_total,
+            "juegos": juegos,
+        }
