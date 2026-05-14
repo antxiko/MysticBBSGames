@@ -32,8 +32,9 @@ git clone https://github.com/antxiko/MysticBBSGames.git
 cd MysticBBSGames
 ```
 
-Cada juego vive en su subcarpeta (`dino/dino.py`, `snake/snake.py`, etc.).
-Para actualizar mas adelante: `git pull` en `/mystic/doors/MysticBBSGames`.
+Cada juego vive en `Juegos/<juego>/<juego>.py` (ej. `Juegos/dino/dino.py`,
+`Juegos/snake/snake.py`). Para actualizar mas adelante: `git pull` en
+`/mystic/doors/MysticBBSGames`.
 
 ### Opcion B: todos los `.py` en una sola carpeta (flat)
 
@@ -57,7 +58,7 @@ A partir de ahora asumo que el repo esta en `/mystic/doors/MysticBBSGames/`
 Antes de tocar Mystic, verifica que Python puede correr los juegos:
 
 ```bash
-python3 /mystic/doors/MysticBBSGames/dino/dino.py
+python3 /mystic/doors/MysticBBSGames/Juegos/dino/dino.py
 ```
 
 Si arranca y muestra el splash con el logo de DINO BBS, todo bien. Pulsa `Q`
@@ -72,10 +73,10 @@ otras BBSes), pide a quien administra el VPS de scores que te de:
 - Un nombre corto para tu BBS (ej. `VALAR`)
 - Un token (string largo) personal de tu BBS
 
-Crea el fichero `scores_config.json` en la raiz del repo:
+Crea el fichero `scores_config.json` en `Juegos/` junto a los juegos:
 
 ```bash
-cd /mystic/doors/MysticBBSGames
+cd /mystic/doors/MysticBBSGames/Juegos
 cp scores_config.json.example scores_config.json
 nano scores_config.json
 ```
@@ -96,7 +97,7 @@ Rellena con los datos que te dieron:
 Verifica:
 
 ```bash
-python3 bbs_scores.py
+python3 Juegos/bbs_scores.py
 # Salida esperada:
 # Config: server=https://scores.tudominio.com bbs=VALAR
 # online_enabled=True, ping=True
@@ -112,7 +113,7 @@ paso y los juegos funcionaran solo con el top local.
 Mystic lanza cada juego como subproceso. La configuracion exacta depende de
 tu version de Mystic. En general:
 
-- **Comando**: `python3 /mystic/doors/MysticBBSGames/dino/dino.py`
+- **Comando**: `python3 /mystic/doors/MysticBBSGames/Juegos/dino/dino.py`
 - **Emulation**: ANSI-BBS
 - **Width**: 80
 - **Color**: SI
@@ -123,7 +124,7 @@ tu version de Mystic. En general:
 En el menu editor de Mystic, añade un door con:
 - **Display**: `DINO - salta cactus`
 - **Command type**: External program
-- **Command**: `python3 /mystic/doors/MysticBBSGames/dino/dino.py`
+- **Command**: `python3 /mystic/doors/MysticBBSGames/Juegos/dino/dino.py`
 - **Hotkey**: `D` (o lo que prefieras)
 
 Asegurate de que el usuario `mystic` (o el que tengas) tiene permiso de
@@ -142,24 +143,24 @@ Cada juego tiene su propio entry point:
 
 | Juego          | Comando                                              |
 |----------------|------------------------------------------------------|
-| DopePython     | `python3 dope/dopepython.py`                         |
-| Typespeed BBS  | `python3 typepython/typepython.py`                   |
-| Snake BBS      | `python3 snake/snake.py`                             |
-| Wordle BBS     | `python3 wordle/wordle.py`                           |
-| Buscaminas BBS | `python3 buscaminas/buscaminas.py`                   |
-| Maze BBS       | `python3 maze/maze.py`                               |
-| BBSATRO        | `python3 bbsatro/balatro.py`                         |
-| 2048 BBS       | `python3 2048/2048.py`                               |
-| Puyo Puyo BBS  | `python3 puyopuyo/puyopuyo.py`                       |
-| Sokoban BBS    | `python3 sokoban/sokoban.py`                         |
-| Breakout BBS   | `python3 breakout/breakout.py`                       |
-| Limonada BBS   | `python3 limonada/limonada.py`                       |
-| Catacumba BBS  | `python3 catacumba/catacumba.py`                     |
-| Outrun BBS     | `python3 outrun/outrun.py`                           |
-| Road Fighter   | `python3 roadfighter/roadfighter.py`                 |
-| Simon BBS      | `python3 simon/simon.py`                             |
-| Movida         | `python3 movida/movida.py`                           |
-| Dino BBS       | `python3 dino/dino.py`                               |
+| DopePython     | `python3 Juegos/dope/dopepython.py`                         |
+| Typespeed BBS  | `python3 Juegos/typepython/typepython.py`                   |
+| Snake BBS      | `python3 Juegos/snake/snake.py`                             |
+| Wordle BBS     | `python3 Juegos/wordle/wordle.py`                           |
+| Buscaminas BBS | `python3 Juegos/buscaminas/buscaminas.py`                   |
+| Maze BBS       | `python3 Juegos/maze/maze.py`                               |
+| BBSATRO        | `python3 Juegos/bbsatro/balatro.py`                         |
+| 2048 BBS       | `python3 Juegos/2048/2048.py`                               |
+| Puyo Puyo BBS  | `python3 Juegos/puyopuyo/puyopuyo.py`                       |
+| Sokoban BBS    | `python3 Juegos/sokoban/sokoban.py`                         |
+| Breakout BBS   | `python3 Juegos/breakout/breakout.py`                       |
+| Limonada BBS   | `python3 Juegos/limonada/limonada.py`                       |
+| Catacumba BBS  | `python3 Juegos/catacumba/catacumba.py`                     |
+| Outrun BBS     | `python3 Juegos/outrun/outrun.py`                           |
+| Road Fighter   | `python3 Juegos/roadfighter/roadfighter.py`                 |
+| Simon BBS      | `python3 Juegos/simon/simon.py`                             |
+| Movida         | `python3 Juegos/movida/movida.py`                           |
+| Dino BBS       | `python3 Juegos/dino/dino.py`                               |
 
 (Los paths son relativos al repo.)
 
@@ -219,7 +220,7 @@ Tu `scores_config.json` queda intacto (esta en `.gitignore`). Tus
   acceso al repo y al fichero `scores_config.json` puede usarlo. Manten ese
   fichero con permisos restrictivos:
   ```bash
-  chmod 600 /mystic/doors/MysticBBSGames/scores_config.json
+  chmod 600 /mystic/doors/MysticBBSGames/Juegos/scores_config.json
   ```
 
 ## Sin scoreboard global
