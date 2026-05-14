@@ -50,8 +50,8 @@ SCORES_FILE = os.path.join(SCRIPT_DIR, "dino_scores.txt")
 MAX_TOP = 10
 
 # fisicas
-GRAVITY = 70.0
-JUMP_VEL = 32.0
+GRAVITY = 40.0
+JUMP_VEL = 24.0
 SPEED_INI = 14.0  # cols/seg al comienzo
 SPEED_MAX = 38.0
 SPEED_ACEL = 0.5  # cols/seg^2
