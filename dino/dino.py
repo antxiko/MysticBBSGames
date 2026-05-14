@@ -50,8 +50,8 @@ SCORES_FILE = os.path.join(SCRIPT_DIR, "dino_scores.txt")
 MAX_TOP = 10
 
 # fisicas
-GRAVITY = 80.0
-JUMP_VEL = 25.0
+GRAVITY = 70.0
+JUMP_VEL = 32.0
 SPEED_INI = 14.0  # cols/seg al comienzo
 SPEED_MAX = 38.0
 SPEED_ACEL = 0.5  # cols/seg^2
@@ -234,16 +234,13 @@ CACTUS_S = [
     " █ ",
     "███",
     " █ ",
-    " █ ",
 ]
 CACTUS_M = [
     "█ █",
     "███",
-    "█ █",
     " █ ",
 ]
 CACTUS_L = [
-    "█ █ █",
     "█ █ █",
     "█████",
     "  █  ",
@@ -493,11 +490,11 @@ def pantalla_final(score, hi_score, top_entered, scores, nombre_guardado=None):
 # ---------- juego ----------
 
 def colisiona(dino_y, obstaculos):
-    """AABB sencillo. Dino ocupa cols DINO_X..DINO_X+DINO_W-1 y filas dino_top..17."""
+    """AABB sencillo. El dino entero se desplaza hacia arriba al saltar."""
     dino_left = DINO_X + 1  # margen para que el morro no golpee
     dino_right = DINO_X + DINO_W - 2
-    dino_bottom = 17
-    dino_top = dino_bottom - DINO_H + 1 - int(round(dino_y))
+    dino_bottom = 17 - int(round(dino_y))
+    dino_top = dino_bottom - DINO_H + 1
     for o in obstaculos:
         tipo = CACTUS_TIPOS[o["tipo"]]
         ox = int(round(o["x"]))
