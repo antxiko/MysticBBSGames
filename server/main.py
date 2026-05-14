@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from . import db
 from .auth import verify_token
+from .admin_web import router as admin_router
 
 # El server no conoce los juegos. El orden lo decide el cliente con ?order=
 # (default 'desc'). El nombre de juego es un string opaco validado por regex.
@@ -36,6 +37,9 @@ app = FastAPI(
     description="Scoreboard global compartido entre BBSes para los juegos del repo MysticBBSGames.",
     version="1.0.0",
 )
+
+
+app.include_router(admin_router)
 
 
 @app.on_event("startup")

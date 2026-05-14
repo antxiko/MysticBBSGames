@@ -1,3 +1,4 @@
 fastapi>=0.110
 uvicorn[standard]>=0.27
 pydantic>=2.0
+python-multipart>=0.0.6  # para Form() en el panel admin

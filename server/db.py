@@ -1,5 +1,6 @@
 """SQLite helpers para el servidor de scores."""
 import os
+import secrets
 import sqlite3
 import hashlib
 from contextlib import contextmanager
@@ -13,8 +14,28 @@ SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.s
 
 
 def hash_token(token: str) -> str:
-    """SHA-256 hex del token plain."""
+    """SHA-256 hex del token plain. Tokens son aleatorios largos, SHA256 vale."""
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def hash_password(password: str, salt: bytes = None) -> str:
+    """PBKDF2-HMAC-SHA256 con 100k iteraciones. Devuelve 'salt_hex:digest_hex'."""
+    if salt is None:
+        salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
+    return salt.hex() + ":" + digest.hex()
+
+
+def verify_password(password: str, stored: str) -> bool:
+    """Verifica un password plain contra el hash almacenado."""
+    try:
+        salt_hex, digest_hex = stored.split(":", 1)
+        salt = bytes.fromhex(salt_hex)
+        expected = bytes.fromhex(digest_hex)
+        computed = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
+        return secrets.compare_digest(computed, expected)
+    except Exception:
+        return False
 
 
 @contextmanager
@@ -95,6 +116,63 @@ def update_bbs_token(short_name: str, token_hash: str) -> bool:
             (token_hash, short_name.upper()),
         )
         return cur.rowcount > 0
+
+
+def delete_bbs(short_name: str) -> tuple[bool, int]:
+    """Elimina una BBS y todos sus scores (cascade). Devuelve (ok, scores_borrados)."""
+    with get_conn() as conn:
+        bbs = conn.execute(
+            "SELECT id FROM bbs WHERE short_name = ?", (short_name.upper(),)
+        ).fetchone()
+        if bbs is None:
+            return False, 0
+        scores_count = conn.execute(
+            "SELECT COUNT(*) FROM scores WHERE bbs_id = ?", (bbs["id"],)
+        ).fetchone()[0]
+        conn.execute("DELETE FROM bbs WHERE id = ?", (bbs["id"],))
+        return True, scores_count
+
+
+def count_scores_for_bbs(bbs_id: int) -> int:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM scores WHERE bbs_id = ?", (bbs_id,)
+        ).fetchone()
+        return row["n"] if row else 0
+
+
+# --- admin ---
+
+def find_admin(username: str) -> Optional[sqlite3.Row]:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT id, username, password_hash FROM admin WHERE username = ?",
+            (username,),
+        ).fetchone()
+
+
+def upsert_admin(username: str, password_hash: str) -> str:
+    """Crea o actualiza el password del admin. Devuelve 'created' o 'updated'."""
+    with get_conn() as conn:
+        existing = conn.execute("SELECT id FROM admin WHERE username = ?", (username,)).fetchone()
+        if existing:
+            conn.execute(
+                "UPDATE admin SET password_hash = ? WHERE username = ?",
+                (password_hash, username),
+            )
+            return "updated"
+        conn.execute(
+            "INSERT INTO admin (username, password_hash) VALUES (?, ?)",
+            (username, password_hash),
+        )
+        return "created"
+
+
+def list_admins() -> list[sqlite3.Row]:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT id, username, created_at FROM admin ORDER BY username"
+        ).fetchall()
 
 
 def insert_score(game: str, bbs_id: int, handle: str, score: int, extra: Optional[str]) -> int:

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS bbs (
 CREATE TABLE IF NOT EXISTS scores (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     game        TEXT    NOT NULL,
-    bbs_id      INTEGER NOT NULL REFERENCES bbs(id),
+    bbs_id      INTEGER NOT NULL REFERENCES bbs(id) ON DELETE CASCADE,
     handle      TEXT    NOT NULL,             -- "AGM"
     score       INTEGER NOT NULL,
     extra       TEXT,                          -- JSON serializado opcional
@@ -24,3 +24,11 @@ CREATE INDEX IF NOT EXISTS idx_scores_game_score
     ON scores(game, score DESC);
 CREATE INDEX IF NOT EXISTS idx_scores_bbs_game
     ON scores(bbs_id, game, score DESC);
+
+-- Admins del panel web. Password almacenada como pbkdf2_hmac-sha256 con salt.
+CREATE TABLE IF NOT EXISTS admin (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    username        TEXT    UNIQUE NOT NULL,
+    password_hash   TEXT    NOT NULL,         -- formato "salt_hex:digest_hex"
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

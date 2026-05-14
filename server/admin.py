@@ -1,4 +1,4 @@
-"""CLI admin: gestionar BBSes registradas.
+"""CLI admin: gestionar BBSes registradas y admins del panel web.
 
 Uso:
   python -m server.admin add-bbs SHORTNAME "Full BBS Name"
@@ -6,8 +6,12 @@ Uso:
   python -m server.admin disable-bbs SHORTNAME
   python -m server.admin enable-bbs SHORTNAME
   python -m server.admin rotate-token SHORTNAME
+  python -m server.admin delete-bbs SHORTNAME
+  python -m server.admin set-admin USERNAME       # pide pass por stdin
+  python -m server.admin list-admin
 """
 import argparse
+import getpass
 import secrets
 import sys
 
@@ -61,6 +65,49 @@ def cmd_rotate_token(short_name: str):
     print("El token anterior queda invalidado.")
 
 
+def cmd_delete_bbs(short_name: str):
+    short = short_name.upper()
+    bbs = db.find_bbs_by_short_name(short)
+    if not bbs:
+        print(f"ERROR: '{short}' no encontrada", file=sys.stderr)
+        sys.exit(1)
+    confirm = input(f"Borrar BBS '{short}' Y todos sus scores? Esto es irreversible. Escribe SI para confirmar: ").strip()
+    if confirm != "SI":
+        print("Cancelado.")
+        return
+    ok, scores = db.delete_bbs(short)
+    if ok:
+        print(f"BBS '{short}' borrada. {scores} scores eliminados.")
+    else:
+        print(f"ERROR: fallo al borrar '{short}'", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_set_admin(username: str):
+    """Crea o actualiza un admin del panel web. Pide pass por stdin sin echo."""
+    p1 = getpass.getpass(f"Nueva password para admin '{username}': ")
+    if len(p1) < 6:
+        print("ERROR: minimo 6 caracteres.", file=sys.stderr)
+        sys.exit(1)
+    p2 = getpass.getpass("Confirmar: ")
+    if p1 != p2:
+        print("ERROR: las passwords no coinciden.", file=sys.stderr)
+        sys.exit(1)
+    pwhash = db.hash_password(p1)
+    result = db.upsert_admin(username, pwhash)
+    print(f"Admin '{username}': {result}")
+
+
+def cmd_list_admin():
+    rows = db.list_admins()
+    if not rows:
+        print("(no hay admins registrados)")
+        return
+    print(f"{'username':<20} {'created_at':<22}")
+    for r in rows:
+        print(f"{r['username']:<20} {r['created_at']:<22}")
+
+
 def main():
     db.init_db()
     p = argparse.ArgumentParser(prog="server.admin", description="Admin CLI del scoreboard")
@@ -81,6 +128,14 @@ def main():
     r = sub.add_parser("rotate-token", help="Generar un token nuevo para una BBS")
     r.add_argument("short_name")
 
+    db_ = sub.add_parser("delete-bbs", help="Borrar BBS y todos sus scores (irreversible)")
+    db_.add_argument("short_name")
+
+    sa = sub.add_parser("set-admin", help="Crear/actualizar admin del panel web")
+    sa.add_argument("username")
+
+    sub.add_parser("list-admin", help="Listar admins del panel web")
+
     args = p.parse_args()
     if args.cmd == "add-bbs":
         cmd_add_bbs(args.short_name, args.full_name)
@@ -92,6 +147,12 @@ def main():
         cmd_set_enabled(args.short_name, True)
     elif args.cmd == "rotate-token":
         cmd_rotate_token(args.short_name)
+    elif args.cmd == "delete-bbs":
+        cmd_delete_bbs(args.short_name)
+    elif args.cmd == "set-admin":
+        cmd_set_admin(args.username)
+    elif args.cmd == "list-admin":
+        cmd_list_admin()
 
 
 if __name__ == "__main__":
