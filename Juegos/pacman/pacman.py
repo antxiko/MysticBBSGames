@@ -68,11 +68,11 @@ MAZE_RAW = [
     "############################",
     "#o...........##...........o#",
     "#.####.#####.##.#####.####.#",
-    "#..........................#",
+    "#....#................#....#",
     "#.####.##.########.##.####.#",
-    "............................",
+    ".......##..........##.......",
     "#.####.##.##----##.##.####.#",
-    "#..........#GGGG#..........#",
+    "#....#.....#GGGG#.....#....#",
     "#.####.##############.####.#",
     "#o....P......##...........o#",
     "############################",
@@ -85,6 +85,32 @@ MAZE_RAW = [
 #   - Row 8 sella la parte de abajo (######): nadie sale por abajo.
 # - Fantasmas salen escalonados (0/3/6/9s) y solo por la puerta arriba.
 GHOST_RELEASE_DELAYS = [0.0, 3.0, 6.0, 9.0]
+
+
+# ---------- escalado de dificultad por nivel ----------
+
+def ghost_dt_for(level):
+    """Periodo de movimiento de los fantasmas. Empieza en 0.18s (5.5 mov/s)
+    y baja un 10% por nivel, con piso 0.08s (12.5 mov/s)."""
+    return max(0.08, 0.18 * (0.9 ** (level - 1)))
+
+
+def scared_dur_for(level):
+    """Duracion del modo asustado tras comer power pellet. Empieza en 6s
+    y baja 0.5s por nivel, con piso 2s."""
+    return max(2.0, 6.0 - 0.5 * (level - 1))
+
+
+def chase_prob_for(level):
+    """Probabilidad de chase frente a random en la IA de fantasmas. Empieza
+    en 70% y sube 5% por nivel, con techo 95%."""
+    return min(0.95, 0.70 + 0.05 * (level - 1))
+
+
+def release_scale_for(level):
+    """Factor que aplica a los GHOST_RELEASE_DELAYS para que los fantasmas
+    salgan antes en niveles altos. Empieza en 1.0 y baja 0.1 por nivel, piso 0.5."""
+    return max(0.5, 1.0 - 0.1 * (level - 1))
 
 
 def aplicar_wrap(x, y, grid):
@@ -433,7 +459,7 @@ def distancia(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
-def mover_fantasma(grid, ghost, pacman_pos, asustado):
+def mover_fantasma(grid, ghost, pacman_pos, asustado, chase_prob=0.7):
     """Mueve un fantasma. Mantiene direccion si puede, en intersecciones decide.
     Comportamiento basico: chase con algo de aleatoriedad. Asustado = huye."""
     x, y, dx, dy = ghost["x"], ghost["y"], ghost["dx"], ghost["dy"]
@@ -449,7 +475,7 @@ def mover_fantasma(grid, ghost, pacman_pos, asustado):
         # huir = maximizar distancia a pacman
         best = max(opts, key=lambda d: distancia((x + d[0], y + d[1]), pacman_pos))
     else:
-        if random.random() < 0.7:
+        if random.random() < chase_prob:
             # chase: minimizar distancia a pacman
             best = min(opts, key=lambda d: distancia((x + d[0], y + d[1]), pacman_pos))
         else:
@@ -470,11 +496,12 @@ def jugar():
 
     def resetear_personajes(release_base=None):
         base = release_base if release_base is not None else time.time()
+        rs = release_scale_for(level)
         return {
             "pacman": {"x": pac_start[0], "y": pac_start[1], "dx": -1, "dy": 0, "next_dx": 0, "next_dy": 0},
             "ghosts": [
                 {"x": gx, "y": gy, "dx": 0, "dy": -1, "color": GHOST_COLORS[i % 4],
-                 "release_at": base + GHOST_RELEASE_DELAYS[i % len(GHOST_RELEASE_DELAYS)]}
+                 "release_at": base + GHOST_RELEASE_DELAYS[i % len(GHOST_RELEASE_DELAYS)] * rs}
                 for i, (gx, gy) in enumerate(ghost_starts)
             ],
         }
@@ -482,8 +509,10 @@ def jugar():
     state = resetear_personajes()
     asustado_hasta = 0.0
     t_ultimo_paso = time.time()
-    PASO_DT = 0.12  # 8 movimientos por segundo
-    GHOST_DT = 0.18  # los fantasmas algo mas lentos
+    PASO_DT = 0.12  # pacman 8 mov/s (constante; los fantasmas son los que aceleran)
+    GHOST_DT = ghost_dt_for(level)
+    scared_dur = scared_dur_for(level)
+    chase_prob = chase_prob_for(level)
     t_ultimo_ghost = time.time()
     frame_tick = 0
     mensaje = None
@@ -546,7 +575,7 @@ def jugar():
                     grid[ny][nx] = ' '
                     score += 50
                     puntos_totales -= 1
-                    asustado_hasta = now + 6.0
+                    asustado_hasta = now + scared_dur
                     mensaje = "¡FANTASMAS ASUSTADOS!"
                     msg_expira = now + 2.0
 
@@ -570,7 +599,7 @@ def jugar():
                 # Aun en la "casa": no se mueve hasta su release_at
                 if now < g["release_at"]:
                     continue
-                mover_fantasma(grid, g, (state["pacman"]["x"], state["pacman"]["y"]), asustado)
+                mover_fantasma(grid, g, (state["pacman"]["x"], state["pacman"]["y"]), asustado, chase_prob)
             # repintar tras mover fantasmas
             frame = frame_nuevo()
             parpadeo = (int(now * 2) % 2 == 0)
@@ -611,6 +640,9 @@ def jugar():
             level += 1
             grid, _, _ = parsear_maze()
             puntos_totales = sum(row.count('.') + row.count('o') for row in grid)
+            GHOST_DT = ghost_dt_for(level)
+            scared_dur = scared_dur_for(level)
+            chase_prob = chase_prob_for(level)
             state = resetear_personajes(release_base=now + 1.0)
             mensaje = f"¡NIVEL {level}!"
             msg_expira = now + 1.5
