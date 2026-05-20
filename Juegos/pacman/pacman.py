@@ -72,11 +72,14 @@ MAZE_RAW = [
     "#.####.#####.##.#####.####.#",
     "#..........................#",
     "#.####.##.########.##.####.#",
-    "#......##....##....##......#",
+    "#......##.GG  GG..##......#",
     "#.####.##.########.##.####.#",
-    "#.####.##.G G G GP.##.####.#",
+    "#............P.............#",
     "############################",
 ]
+# Pacman empieza abajo al centro. Los 4 fantasmas estan en row 7 cols 10-15,
+# en un corredor central. Salen escalonadamente (delays 0/3/6/9s).
+GHOST_RELEASE_DELAYS = [0.0, 3.0, 6.0, 9.0]
 # 11 filas logicas x 28 cols logicas. La fila 9 tiene G's (fantasmas) y P (pacman).
 
 MAZE_W = 28
@@ -421,11 +424,13 @@ def jugar():
     level = 1
     puntos_totales = sum(row.count('.') + row.count('o') for row in grid)
 
-    def resetear_personajes():
+    def resetear_personajes(release_base=None):
+        base = release_base if release_base is not None else time.time()
         return {
             "pacman": {"x": pac_start[0], "y": pac_start[1], "dx": -1, "dy": 0, "next_dx": 0, "next_dy": 0},
             "ghosts": [
-                {"x": gx, "y": gy, "dx": 0, "dy": -1, "color": GHOST_COLORS[i % 4]}
+                {"x": gx, "y": gy, "dx": 0, "dy": -1, "color": GHOST_COLORS[i % 4],
+                 "release_at": base + GHOST_RELEASE_DELAYS[i % len(GHOST_RELEASE_DELAYS)]}
                 for i, (gx, gy) in enumerate(ghost_starts)
             ],
         }
@@ -517,6 +522,9 @@ def jugar():
         if now - t_ultimo_ghost >= GHOST_DT:
             t_ultimo_ghost = now
             for g in state["ghosts"]:
+                # Aun en la "casa": no se mueve hasta su release_at
+                if now < g["release_at"]:
+                    continue
                 mover_fantasma(grid, g, (state["pacman"]["x"], state["pacman"]["y"]), asustado)
             # repintar tras mover fantasmas
             frame = frame_nuevo()
@@ -533,20 +541,20 @@ def jugar():
         for g in state["ghosts"]:
             if (g["x"], g["y"]) == (state["pacman"]["x"], state["pacman"]["y"]):
                 if asustado:
-                    # comer fantasma
+                    # comer fantasma: vuelve a la casa y espera 3s para salir
                     score += 200
-                    # reset al inicio
                     gi = state["ghosts"].index(g)
                     gx, gy = ghost_starts[gi % len(ghost_starts)]
                     g["x"], g["y"] = gx, gy
+                    g["release_at"] = now + 3.0
                     mensaje = "+200"
                     msg_expira = now + 1.0
                 else:
                     lives -= 1
                     if lives <= 0:
                         return score, level
-                    # reset todos
-                    state = resetear_personajes()
+                    # reset todos: el primer fantasma sale tras 1s, luego escalonados
+                    state = resetear_personajes(release_base=now + 1.0)
                     mensaje = f"¡VIDAS RESTANTES: {lives}!"
                     msg_expira = now + 1.5
                     time.sleep(1.0)
@@ -557,7 +565,7 @@ def jugar():
             level += 1
             grid, _, _ = parsear_maze()
             puntos_totales = sum(row.count('.') + row.count('o') for row in grid)
-            state = resetear_personajes()
+            state = resetear_personajes(release_base=now + 1.0)
             mensaje = f"¡NIVEL {level}!"
             msg_expira = now + 1.5
             time.sleep(1.0)
