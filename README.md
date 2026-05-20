@@ -1,6 +1,6 @@
 # Juegos BBS en Python
 
-Coleccion de **18 juegos** en modo texto escritos en Python puro, pensados como *doors* para [Mystic BBS](https://www.mysticbbs.com/) pero jugables tambien en cualquier terminal ANSI local. Incluye **scoreboard global online** con servidor compartido entre BBSes, panel admin web y ranking publico con filtros temporales.
+Coleccion de **19 juegos** en modo texto escritos en Python puro, pensados como *doors* para [Mystic BBS](https://www.mysticbbs.com/) pero jugables tambien en cualquier terminal ANSI local. Incluye **scoreboard global online** con servidor compartido entre BBSes, panel admin web y ranking publico con filtros temporales.
 
 Demo en vivo: **https://scores.nosignalbbs.com** (No Signal BBS).
 
@@ -153,6 +153,14 @@ Aventura conversacional castiza-punk ambientada en Madrid 1985 (la Movida). Saba
 python3 Juegos/movida/movida.py
 ```
 
+### [Juegos/pacman/](Juegos/pacman/) - Pacman BBS
+
+Clon cenital del clasico. Maze 28x11 logico (cada celda = 2x2 terminal). Pacman y 4 fantasmas (Blinky/Pinky/Inky/Clyde) en sprites 2x2 = solo ~20 celdas cambian por frame. Power pellets que asustan a los fantasmas durante 6s. Mecanica: WASD para mover, comer todos los puntos = siguiente nivel. 3 vidas. Top 10 global.
+
+```
+python3 Juegos/pacman/pacman.py
+```
+
 ### [Juegos/dino/](Juegos/dino/) - Dino BBS
 
 Clon del runner del dinosaurio de Chrome offline. Saltas con espacio sobre cactus que vienen por la derecha. Suelo estatico, cielo estatico - solo se mueven los cactus, las patas del dino y los digitos del score. ~20 celdas cambiando por frame de media: el mas ligero de todos los real-time del repo, perfecto para BBS por modem.
@@ -232,6 +240,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Simon BBS      | memoria turn-based    | char-mode     | si, OK            |
 | Movida         | aventura conversacional | line-mode   | si, OK            |
 | Dino BBS       | real-time runner      | char-mode     | si, OK            |
+| Pacman BBS     | real-time cenital     | char-mode     | en pruebas        |
 
 ## Agradecimientos
 
