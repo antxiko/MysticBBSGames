@@ -1,6 +1,6 @@
 # Juegos BBS en Python
 
-Coleccion de **19 juegos** en modo texto escritos en Python puro, pensados como *doors* para [Mystic BBS](https://www.mysticbbs.com/) pero jugables tambien en cualquier terminal ANSI local. Incluye **scoreboard global online** con servidor compartido entre BBSes, panel admin web y ranking publico con filtros temporales.
+Coleccion de **20 juegos** en modo texto escritos en Python puro, pensados como *doors* para [Mystic BBS](https://www.mysticbbs.com/) pero jugables tambien en cualquier terminal ANSI local. Incluye **scoreboard global online** con servidor compartido entre BBSes, panel admin web y ranking publico con filtros temporales.
 
 Demo en vivo: **https://scores.nosignalbbs.com** (No Signal BBS).
 
@@ -155,10 +155,18 @@ python3 Juegos/movida/movida.py
 
 ### [Juegos/pacman/](Juegos/pacman/) - Pacman BBS
 
-Clon cenital del clasico. Maze 28x11 logico (cada celda = 2x2 terminal). Pacman y 4 fantasmas (Blinky/Pinky/Inky/Clyde) en sprites 2x2 = solo ~20 celdas cambian por frame. Power pellets que asustan a los fantasmas durante 6s. Mecanica: WASD para mover, comer todos los puntos = siguiente nivel. 3 vidas. Top 10 global.
+Clon cenital del clasico. Maze 28x11 logico (cada celda = 2x2 terminal). Pacman y 4 fantasmas (Blinky/Pinky/Inky/Clyde) en sprites 2x2 = solo ~20 celdas cambian por frame. Power pellets que asustan a los fantasmas durante 6s. Casa de fantasmas con puerta de una via (pacman no puede entrar). Dificultad escalada por nivel: fantasmas mas rapidos, asustado mas corto, IA mas agresiva. 3 vidas. Top 10 global.
 
 ```
 python3 Juegos/pacman/pacman.py
+```
+
+### [Juegos/hundir/](Juegos/hundir/) - Hundir la Flota BBS
+
+Clon del clasico turn-based contra IA. Dos grids 10x10 lado a lado: tu flota a la izquierda, lo que sabes del enemigo a la derecha. Flota estandar (Portaaviones 5 / Acorazado 4 / Crucero 3 / Submarino 3 / Destructor 2). Barcos no se tocan. Si aciertas sigues tirando (regla clasica). IA hunt+target: tras un impacto encola los vecinos como targets, al hundir un barco vuelve a hunt. Bonus eficiencia por ganar con pocos tiros. Top 10 global.
+
+```
+python3 Juegos/hundir/hundir.py
 ```
 
 ### [Juegos/dino/](Juegos/dino/) - Dino BBS
@@ -241,6 +249,7 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 | Movida         | aventura conversacional | line-mode   | si, OK            |
 | Dino BBS       | real-time runner      | char-mode     | si, OK            |
 | Pacman BBS     | real-time cenital     | char-mode     | en pruebas        |
+| Hundir la Flota| turn-based vs IA      | char-mode     | en pruebas        |
 
 ## Agradecimientos
 
