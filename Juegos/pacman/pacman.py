@@ -66,20 +66,33 @@ ASCENDING = False  # mas score = mejor
 
 MAZE_RAW = [
     "############################",
-    "#............##............#",
-    "#.####.#####.##.#####.####.#",
-    "#o####.#####.##.#####.####o#",
+    "#o...........##...........o#",
     "#.####.#####.##.#####.####.#",
     "#..........................#",
     "#.####.##.########.##.####.#",
-    "#......##.GG  GG..##......#",
-    "#.####.##.########.##.####.#",
+    "............................",
+    "#.####.#####....#####.####.#",
+    "#...........GGGG...........#",
+    "#.####.#####....#####.####.#",
     "#............P.............#",
     "############################",
 ]
-# Pacman empieza abajo al centro. Los 4 fantasmas estan en row 7 cols 10-15,
-# en un corredor central. Salen escalonadamente (delays 0/3/6/9s).
+# Maze simetrico izquierda-derecha, basado en el original de Pacman comprimido a 11 filas.
+# 4 power pellets (o) en las esquinas del area de puntos (row 1).
+# Row 5: TUNEL completo (sin walls a los lados): moverse off col 0 wraparound a col 27.
+# Casa de fantasmas en row 7 cols 12-15 (GGGG), con escape arriba (cols 12-15 abiertas en
+# row 6) y abajo (igual en row 8). Salen escalonadamente (0/3/6/9s).
 GHOST_RELEASE_DELAYS = [0.0, 3.0, 6.0, 9.0]
+
+
+def aplicar_wrap(x, y, grid):
+    """Wraparound horizontal en filas tunel (donde col 0 no es #)."""
+    if 0 <= y < len(grid):
+        if x < 0 and grid[y][0] != '#':
+            return MAZE_W - 1, y
+        if x >= MAZE_W and grid[y][-1] != '#':
+            return 0, y
+    return x, y
 # 11 filas logicas x 28 cols logicas. La fila 9 tiene G's (fantasmas) y P (pacman).
 
 MAZE_W = 28
@@ -251,29 +264,30 @@ def pintar_pared(frame, x_log, y_log):
     """Pinta una pared 2x2 en posicion logica."""
     tx = COL0 + x_log * 2
     ty = ROW0 + y_log * 2
-    set_cell(frame, ty, tx, "█", "azulB")
-    set_cell(frame, ty, tx + 1, "█", "azulB")
-    set_cell(frame, ty + 1, tx, "█", "azulB")
-    set_cell(frame, ty + 1, tx + 1, "█", "azulB")
+    set_cell(frame, ty, tx, "█", "azul")
+    set_cell(frame, ty, tx + 1, "█", "azul")
+    set_cell(frame, ty + 1, tx, "█", "azul")
+    set_cell(frame, ty + 1, tx + 1, "█", "azul")
 
 
 def pintar_punto(frame, x_log, y_log):
-    """Pinta un punto pequeño en el centro de la celda 2x2."""
+    """Punto pequeño en la celda 2x2. Usa . en CP437 puro."""
     tx = COL0 + x_log * 2
     ty = ROW0 + y_log * 2
-    set_cell(frame, ty, tx, "·", "blanco")
+    set_cell(frame, ty, tx + 1, ".", "blanco")
 
 
 def pintar_pellet(frame, x_log, y_log, parpadeo=False):
-    """Power pellet: cuadrado redondeado de 2x2 chars (4 cuadrantes con esquinas
-    recortadas para parecer circular). Parpadea entre amarillo y blanco brillante."""
+    """Power pellet: banda horizontal con half-blocks CP437 puros.
+    ▄ (bot-half) en fila superior + ▀ (top-half) en fila inferior = ink en el medio,
+    formando una pastilla horizontal de 4x2 pixels. Parpadea amarillo <-> blanco."""
     tx = COL0 + x_log * 2
     ty = ROW0 + y_log * 2
     color = "blancoB" if parpadeo else "amarB"
-    set_cell(frame, ty, tx, "▟", color)
-    set_cell(frame, ty, tx + 1, "▙", color)
-    set_cell(frame, ty + 1, tx, "▜", color)
-    set_cell(frame, ty + 1, tx + 1, "▛", color)
+    set_cell(frame, ty, tx, "▄", color)
+    set_cell(frame, ty, tx + 1, "▄", color)
+    set_cell(frame, ty + 1, tx, "▀", color)
+    set_cell(frame, ty + 1, tx + 1, "▀", color)
 
 
 def borrar_celda(frame, x_log, y_log):
@@ -287,7 +301,9 @@ def borrar_celda(frame, x_log, y_log):
 
 
 def pintar_pacman(frame, x_log, y_log, direccion, frame_tick):
-    """Pacman 2x2 amarillo. Direccion: (dx, dy). frame_tick alterna abierto/cerrado."""
+    """Pacman 2x2 amarillo en CP437 puro. Direccion (dx, dy).
+    Usa half-blocks: █ (full), ▌ (left-half), ▐ (right-half), ▀ (top-half), ▄ (bot-half).
+    Alterna entre cuadrado lleno (cerrado) y forma con apertura."""
     tx = COL0 + x_log * 2
     ty = ROW0 + y_log * 2
     abierto = (frame_tick // 3) % 2 == 0
@@ -299,26 +315,25 @@ def pintar_pacman(frame, x_log, y_log, direccion, frame_tick):
         set_cell(frame, ty + 1, tx, "█", color)
         set_cell(frame, ty + 1, tx + 1, "█", color)
         return
-    # Abierto: media-pacman segun direccion
     dx, dy = direccion
-    if dx > 0:  # derecha
+    if dx > 0:  # boca a la derecha: lleno a la izq, half-left en la dcha (hueco a la dcha)
         set_cell(frame, ty, tx, "█", color)
-        set_cell(frame, ty, tx + 1, "▖", color)
+        set_cell(frame, ty, tx + 1, "▌", color)
         set_cell(frame, ty + 1, tx, "█", color)
-        set_cell(frame, ty + 1, tx + 1, "▘", color)
-    elif dx < 0:  # izquierda
-        set_cell(frame, ty, tx, "▗", color)
+        set_cell(frame, ty + 1, tx + 1, "▌", color)
+    elif dx < 0:  # boca a la izquierda: half-right en la izq, lleno a la dcha
+        set_cell(frame, ty, tx, "▐", color)
         set_cell(frame, ty, tx + 1, "█", color)
-        set_cell(frame, ty + 1, tx, "▝", color)
+        set_cell(frame, ty + 1, tx, "▐", color)
         set_cell(frame, ty + 1, tx + 1, "█", color)
-    elif dy > 0:  # abajo
+    elif dy > 0:  # boca abajo: arriba lleno, abajo half-top (hueco bajo)
         set_cell(frame, ty, tx, "█", color)
         set_cell(frame, ty, tx + 1, "█", color)
-        set_cell(frame, ty + 1, tx, "▘", color)
-        set_cell(frame, ty + 1, tx + 1, "▝", color)
-    else:  # arriba o quieto
-        set_cell(frame, ty, tx, "▖", color)
-        set_cell(frame, ty, tx + 1, "▗", color)
+        set_cell(frame, ty + 1, tx, "▀", color)
+        set_cell(frame, ty + 1, tx + 1, "▀", color)
+    else:  # arriba o quieto: boca arriba (hueco arriba)
+        set_cell(frame, ty, tx, "▄", color)
+        set_cell(frame, ty, tx + 1, "▄", color)
         set_cell(frame, ty + 1, tx, "█", color)
         set_cell(frame, ty + 1, tx + 1, "█", color)
 
@@ -328,14 +343,13 @@ GHOST_NAMES = ["BLIN", "PINK", "INKY", "CLYD"]
 
 
 def pintar_fantasma(frame, x_log, y_log, color, asustado=False):
-    """Fantasma 2x2: redondeado por arriba, ondulado por abajo."""
+    """Fantasma 2x2 en CP437 puro: cabeza solida arriba (█) + patas en top-half (▀)
+    abajo, creando un efecto de cuerpo con base ondulada."""
     tx = COL0 + x_log * 2
     ty = ROW0 + y_log * 2
     col = "azulB" if asustado else color
-    # Top: cabeza redondeada (parecido a un casco)
-    set_cell(frame, ty, tx, "▟", col)
-    set_cell(frame, ty, tx + 1, "▙", col)
-    # Bottom: dos patas/ojos
+    set_cell(frame, ty, tx, "█", col)
+    set_cell(frame, ty, tx + 1, "█", col)
     set_cell(frame, ty + 1, tx, "▀", col)
     set_cell(frame, ty + 1, tx + 1, "▀", col)
 
@@ -359,7 +373,8 @@ def render_hud(frame, score, lives, level):
     set_text(frame, 0, 1, "PACMAN BBS", "amarB", "bold")
     set_text(frame, 0, 18, f"SCORE {score:>5}", "blancoB", "bold")
     set_text(frame, 0, 36, "LIVES ", "blanco")
-    set_text(frame, 0, 42, "♥ " * lives, "rojoB", "bold")
+    # CP437 puro: bloque amarillo por cada vida en vez de heart (♥ no esta en CP437)
+    set_text(frame, 0, 42, "█ " * lives, "amarB", "bold")
     set_text(frame, 0, 58, f"NIVEL {level}", "cyanB", "bold")
 
 
@@ -380,12 +395,13 @@ def es_pared(grid, x, y):
 
 
 def vecinos_libres(grid, x, y, exclude_dir=None):
-    """Lista de (dx, dy) que no son paredes desde (x, y)."""
+    """Lista de (dx, dy) que no son paredes desde (x, y). Soporta wraparound del tunel."""
     res = []
     for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
         if exclude_dir and (dx, dy) == exclude_dir:
             continue
-        if not es_pared(grid, x + dx, y + dy):
+        nx, ny = aplicar_wrap(x + dx, y + dy, grid)
+        if not es_pared(grid, nx, ny):
             res.append((dx, dy))
     return res
 
@@ -416,8 +432,8 @@ def mover_fantasma(grid, ghost, pacman_pos, asustado):
         else:
             best = random.choice(opts)
     ghost["dx"], ghost["dy"] = best
-    ghost["x"] += best[0]
-    ghost["y"] += best[1]
+    nx, ny = aplicar_wrap(ghost["x"] + best[0], ghost["y"] + best[1], grid)
+    ghost["x"], ghost["y"] = nx, ny
 
 
 def jugar():
@@ -488,13 +504,13 @@ def jugar():
             pac = state["pacman"]
             # intentar cambiar a next_dir si es posible
             if (pac["next_dx"], pac["next_dy"]) != (0, 0):
-                nx, ny = pac["x"] + pac["next_dx"], pac["y"] + pac["next_dy"]
+                nx, ny = aplicar_wrap(pac["x"] + pac["next_dx"], pac["y"] + pac["next_dy"], grid)
                 if not es_pared(grid, nx, ny):
                     pac["dx"], pac["dy"] = pac["next_dx"], pac["next_dy"]
                     pac["next_dx"], pac["next_dy"] = 0, 0
-            # mover en direccion actual si se puede
+            # mover en direccion actual si se puede (con wraparound)
             old_pos = (pac["x"], pac["y"])
-            nx, ny = pac["x"] + pac["dx"], pac["y"] + pac["dy"]
+            nx, ny = aplicar_wrap(pac["x"] + pac["dx"], pac["y"] + pac["dy"], grid)
             if not es_pared(grid, nx, ny):
                 pac["x"], pac["y"] = nx, ny
                 # comer
@@ -597,7 +613,7 @@ MANUAL_LINEAS = [
     ("PREMISA", "cyanB", "bold"),
     "  Pacman BBS - laberinto cenital con 4 fantasmas.",
     "  Come todos los puntos sin que te pillen.",
-    "  4 power pellets (●) hacen huir a los fantasmas brevemente.",
+    "  4 power pellets (bolas amarillas grandes) hacen huir a los fantasmas brevemente.",
     "",
     ("CONTROLES", "cyanB", "bold"),
     "  WASD / flechas    mover",
