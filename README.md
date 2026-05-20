@@ -91,7 +91,7 @@ python3 Juegos/puyopuyo/puyopuyo.py
 
 ### [Juegos/sokoban/](Juegos/sokoban/) - Sokoban BBS
 
-Clon de Sokoban. 35 niveles hechos a mano de dificultad creciente. Empujas cajas a sus marcas (nunca tirar). Undo ilimitado, reset y saltar nivel. Puntuacion = 100 por nivel - movimientos (minimo 10).
+Clon de Sokoban. 154 niveles del set publico de [Nicolas Musacchio](https://github.com/nMusacchio/sokoban) (MIT) de dificultad creciente. Empujas cajas a sus marcas (nunca tirar). Undo ilimitado, reset y saltar nivel. Puntuacion = 100 por nivel - movimientos (minimo 10).
 
 ```
 python3 Juegos/sokoban/sokoban.py
@@ -238,6 +238,10 @@ Cada script es un proceso externo. Configura la entrada del door en Mystic para 
 Gracias a **X1Pepe** (SysOp de **Sotano MSX BBS**) por la ayuda con el testeo
 de los juegos, las ideas para mejorarlos y la base del servicio de
 puntuaciones globales compartidas entre BBSes.
+
+Gracias a **[Nicolas Musacchio](https://github.com/nMusacchio/sokoban)** por
+el set de 154 niveles de Sokoban (MIT), que sustituyen los niveles hechos a
+mano de las versiones iniciales del juego.
 
 ## Licencia
 
