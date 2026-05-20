@@ -358,19 +358,23 @@ def pintar_hud(score, tiros, turno):
     sys.stdout.write(at(1, 65) + c(txt, color, "bold"))
 
 
-def pintar_grids(player_grid, player_view, enemy_view, cursor, mostrar_enemigo=False, enemy_grid=None):
-    """Repinta ambos grids."""
+def pintar_grids(player_grid, vista_propia, vista_enemigo, cursor, mostrar_enemigo=False, enemy_grid=None):
+    """Repinta ambos grids.
+
+    - LEFT (TU FLOTA): tus barcos + vista_propia (impactos de la IA sobre ti).
+    - RIGHT (FLOTA ENEMIGA): vista_enemigo (donde has disparado tu).
+    """
     for r in range(GRID_N):
         ty = GRID_ROW0 + r
         for col in range(GRID_N):
-            v_p = player_view[r][col]
+            v_p = vista_propia[r][col]
             hay = (player_grid[r][col] == SHIP)
             ch, color = char_para(v_p, hay_barco=hay, lado="propio")
             sys.stdout.write(at(ty, LEFT_GRID_COL + col * 2) + c(ch, color))
-            v_e = enemy_view[r][col]
+            v_e = vista_enemigo[r][col]
             ch2, color2 = char_para(v_e, lado="enemigo")
             if mostrar_enemigo and v_e == V_UNKNOWN and enemy_grid and enemy_grid[r][col] == SHIP:
-                # al final de partida revelamos los barcos enemigos
+                # al final de partida revelamos los barcos enemigos no descubiertos
                 ch2, color2 = "#", "blancoB"
             if cursor and cursor == (r, col):
                 sys.stdout.write(at(ty, RIGHT_GRID_COL + col * 2) + c(ch2, color2, "reverso"))
@@ -445,8 +449,8 @@ def jugar():
         return None
     player_grid, player_ships = res
     enemy_grid, enemy_ships = colocar_flota()
-    player_view = view_nueva()   # lo que yo se de la flota enemiga
-    enemy_view = view_nueva()    # lo que la IA sabe de mi flota
+    vista_enemigo = view_nueva()  # lo que yo se de la flota enemiga (grid DERECHO)
+    vista_propia = view_nueva()   # impactos de la IA sobre mi flota (grid IZQUIERDO)
     ia = ia_nueva()
 
     score = 0
@@ -458,7 +462,7 @@ def jugar():
 
     pintar_marco()
     pintar_hud(score, tiros, turno)
-    pintar_grids(player_grid, player_view, enemy_view, tuple(cursor))
+    pintar_grids(player_grid, vista_propia, vista_enemigo, tuple(cursor))
     pintar_info(player_ships, enemy_ships)
     pintar_status(mensaje)
     pintar_footer(" FLECHAS/WASD mover    ESPACIO/ENTER disparar    Q salir ")
@@ -479,11 +483,11 @@ def jugar():
                 cursor[1] = (cursor[1] + 1) % GRID_N
             elif t in (" ", "\r", "\n"):
                 r, col = cursor
-                if player_view[r][col] != V_UNKNOWN:
+                if vista_enemigo[r][col] != V_UNKNOWN:
                     mensaje = f"Ya disparaste a {coord_legible(r, col)}. Elige otra."
                 else:
                     tiros += 1
-                    resultado, ship = disparar(enemy_grid, enemy_ships, player_view, r, col)
+                    resultado, ship = disparar(enemy_grid, enemy_ships, vista_enemigo, r, col)
                     if resultado == "miss":
                         mensaje = f"Disparo en {coord_legible(r, col)}: AGUA. Turno enemigo."
                         turno = "ia"
@@ -502,19 +506,19 @@ def jugar():
                         mensaje = f"¡VICTORIA! Bonus eficiencia +{bonus}."
             # repintar
             pintar_hud(score, tiros, turno)
-            pintar_grids(player_grid, player_view, enemy_view, tuple(cursor))
+            pintar_grids(player_grid, vista_propia, vista_enemigo, tuple(cursor))
             pintar_info(player_ships, enemy_ships)
             pintar_status(mensaje)
             sys.stdout.flush()
         else:
             # Turno IA con pequena pausa para que se vea
             pintar_hud(score, tiros, turno)
-            pintar_grids(player_grid, player_view, enemy_view, tuple(cursor))
+            pintar_grids(player_grid, vista_propia, vista_enemigo, tuple(cursor))
             pintar_status("La IA esta apuntando...", "rojoB")
             sys.stdout.flush()
             time.sleep(0.7)
             r, col = ia_elige(ia)
-            resultado, ship = disparar(player_grid, player_ships, enemy_view, r, col)
+            resultado, ship = disparar(player_grid, player_ships, vista_propia, r, col)
             ia_resultado(ia, r, col, resultado)
             if resultado == "miss":
                 mensaje = f"IA dispara a {coord_legible(r, col)}: AGUA. Tu turno."
@@ -527,7 +531,7 @@ def jugar():
                 ganador = "ia"
                 mensaje = "Te han hundido toda la flota. Game over."
             pintar_hud(score, tiros, turno)
-            pintar_grids(player_grid, player_view, enemy_view, tuple(cursor))
+            pintar_grids(player_grid, vista_propia, vista_enemigo, tuple(cursor))
             pintar_info(player_ships, enemy_ships)
             pintar_status(mensaje, "rojoB" if turno == "ia" else "amarB")
             sys.stdout.flush()
@@ -537,7 +541,7 @@ def jugar():
     # Pantalla de fin de partida (revelando flota enemiga restante)
     pintar_marco()
     pintar_hud(score, tiros, "yo" if ganador == "yo" else "ia")
-    pintar_grids(player_grid, player_view, enemy_view, None,
+    pintar_grids(player_grid, vista_propia, vista_enemigo, None,
                  mostrar_enemigo=True, enemy_grid=enemy_grid)
     pintar_info(player_ships, enemy_ships)
     pintar_status(mensaje, "verdeB" if ganador == "yo" else "rojoB")
