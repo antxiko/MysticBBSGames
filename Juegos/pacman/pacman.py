@@ -71,17 +71,19 @@ MAZE_RAW = [
     "#..........................#",
     "#.####.##.########.##.####.#",
     "............................",
-    "#.####.#####....#####.####.#",
-    "#...........GGGG...........#",
-    "#.####.#####....#####.####.#",
+    "#.####.#####----#####.####.#",
+    "#..........#GGGG#..........#",
+    "#..........######..........#",
     "#............P.............#",
     "############################",
 ]
-# Maze simetrico izquierda-derecha, basado en el original de Pacman comprimido a 11 filas.
-# 4 power pellets (o) en las esquinas del area de puntos (row 1).
-# Row 5: TUNEL completo (sin walls a los lados): moverse off col 0 wraparound a col 27.
-# Casa de fantasmas en row 7 cols 12-15 (GGGG), con escape arriba (cols 12-15 abiertas en
-# row 6) y abajo (igual en row 8). Salen escalonadamente (0/3/6/9s).
+# Maze simetrico, basado en el original de Pacman comprimido a 11 filas.
+# - 4 power pellets (o) en las esquinas del area de puntos (row 1).
+# - Row 5: TUNEL completo (sin walls a los lados): wraparound col 0 <-> col 27.
+# - Casa de fantasmas en row 7 (cols 12-15 = GGGG, cols 11 y 16 = paredes).
+#   - Row 6 tiene la PUERTA (----) en cols 12-15: solo fantasmas la atraviesan.
+#   - Row 8 sella la parte de abajo (######): nadie sale por abajo.
+# - Fantasmas salen escalonados (0/3/6/9s) y solo por la puerta arriba.
 GHOST_RELEASE_DELAYS = [0.0, 3.0, 6.0, 9.0]
 
 
@@ -290,6 +292,16 @@ def pintar_pellet(frame, x_log, y_log, parpadeo=False):
     set_cell(frame, ty + 1, tx + 1, "▀", color)
 
 
+def pintar_puerta(frame, x_log, y_log):
+    """Puerta de la casa de fantasmas: barra fina horizontal magenta en el centro
+    de la celda 2x2. Usa ▄ en la fila de texto superior (queda en la mitad
+    visual del bloque)."""
+    tx = COL0 + x_log * 2
+    ty = ROW0 + y_log * 2
+    set_cell(frame, ty, tx, "▄", "magentaB")
+    set_cell(frame, ty, tx + 1, "▄", "magentaB")
+
+
 def borrar_celda(frame, x_log, y_log):
     """Limpia los 4 chars de una celda logica."""
     tx = COL0 + x_log * 2
@@ -366,6 +378,8 @@ def render_maze_estatico(frame, grid, parpadeo=False):
                 pintar_punto(frame, x, y)
             elif ch == 'o':
                 pintar_pellet(frame, x, y, parpadeo)
+            elif ch == '-':
+                pintar_puerta(frame, x, y)
 
 
 def render_hud(frame, score, lives, level):
@@ -389,9 +403,18 @@ def render_footer(frame, mensaje=None):
 # ---------- logica del juego ----------
 
 def es_pared(grid, x, y):
+    """Bloqueo para FANTASMAS: solo '#' bloquea. La puerta '-' es transitable."""
     if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
         return True
     return grid[y][x] == '#'
+
+
+def es_pared_pacman(grid, x, y):
+    """Bloqueo para PACMAN: '#' y la puerta '-' bloquean."""
+    if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
+        return True
+    ch = grid[y][x]
+    return ch == '#' or ch == '-'
 
 
 def vecinos_libres(grid, x, y, exclude_dir=None):
@@ -505,13 +528,13 @@ def jugar():
             # intentar cambiar a next_dir si es posible
             if (pac["next_dx"], pac["next_dy"]) != (0, 0):
                 nx, ny = aplicar_wrap(pac["x"] + pac["next_dx"], pac["y"] + pac["next_dy"], grid)
-                if not es_pared(grid, nx, ny):
+                if not es_pared_pacman(grid, nx, ny):
                     pac["dx"], pac["dy"] = pac["next_dx"], pac["next_dy"]
                     pac["next_dx"], pac["next_dy"] = 0, 0
             # mover en direccion actual si se puede (con wraparound)
             old_pos = (pac["x"], pac["y"])
             nx, ny = aplicar_wrap(pac["x"] + pac["dx"], pac["y"] + pac["dy"], grid)
-            if not es_pared(grid, nx, ny):
+            if not es_pared_pacman(grid, nx, ny):
                 pac["x"], pac["y"] = nx, ny
                 # comer
                 celda = grid[ny][nx]
