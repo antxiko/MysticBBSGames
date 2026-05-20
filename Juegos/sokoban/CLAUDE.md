@@ -8,7 +8,7 @@ Clon de Sokoban (Hiroyuki Imabayashi, 1981) en modo texto para Mystic BBS. Empuj
 - Char-mode con `termios`.
 - Shadow buffer para diff-rendering.
 - Top 10 en `sokoban_scores.txt` (por niveles superados + movimientos).
-- 30 niveles hechos a mano de dificultad creciente.
+- 35 niveles hechos a mano de dificultad creciente.
 
 ## Mecanica
 

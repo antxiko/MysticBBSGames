@@ -91,7 +91,7 @@ python3 Juegos/puyopuyo/puyopuyo.py
 
 ### [Juegos/sokoban/](Juegos/sokoban/) - Sokoban BBS
 
-Clon de Sokoban. 30 niveles hechos a mano de dificultad creciente. Empujas cajas a sus marcas (nunca tirar). Undo ilimitado, reset y saltar nivel. Puntuacion = 100 por nivel - movimientos (minimo 10).
+Clon de Sokoban. 35 niveles hechos a mano de dificultad creciente. Empujas cajas a sus marcas (nunca tirar). Undo ilimitado, reset y saltar nivel. Puntuacion = 100 por nivel - movimientos (minimo 10).
 
 ```
 python3 Juegos/sokoban/sokoban.py
