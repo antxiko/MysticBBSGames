@@ -264,11 +264,16 @@ def pintar_punto(frame, x_log, y_log):
     set_cell(frame, ty, tx, "·", "blanco")
 
 
-def pintar_pellet(frame, x_log, y_log):
-    """Power pellet: cuadrado relleno en la celda 2x2."""
+def pintar_pellet(frame, x_log, y_log, parpadeo=False):
+    """Power pellet: cuadrado redondeado de 2x2 chars (4 cuadrantes con esquinas
+    recortadas para parecer circular). Parpadea entre amarillo y blanco brillante."""
     tx = COL0 + x_log * 2
     ty = ROW0 + y_log * 2
-    set_cell(frame, ty, tx, "●", "amarB")
+    color = "blancoB" if parpadeo else "amarB"
+    set_cell(frame, ty, tx, "▟", color)
+    set_cell(frame, ty, tx + 1, "▙", color)
+    set_cell(frame, ty + 1, tx, "▜", color)
+    set_cell(frame, ty + 1, tx + 1, "▛", color)
 
 
 def borrar_celda(frame, x_log, y_log):
@@ -337,8 +342,8 @@ def pintar_fantasma(frame, x_log, y_log, color, asustado=False):
 
 # ---------- render inicial del maze ----------
 
-def render_maze_estatico(frame, grid):
-    """Pinta paredes, puntos y pellets. Una sola vez por nivel."""
+def render_maze_estatico(frame, grid, parpadeo=False):
+    """Pinta paredes, puntos y pellets. parpadeo cambia el color de los pellets."""
     for y, row in enumerate(grid):
         for x, ch in enumerate(row):
             if ch == '#':
@@ -346,7 +351,7 @@ def render_maze_estatico(frame, grid):
             elif ch == '.':
                 pintar_punto(frame, x, y)
             elif ch == 'o':
-                pintar_pellet(frame, x, y)
+                pintar_pellet(frame, x, y, parpadeo)
 
 
 def render_hud(frame, score, lives, level):
@@ -510,7 +515,8 @@ def jugar():
             frame = frame_nuevo()
             # Solo modificamos lo necesario, pero re-pintamos full por simpleza
             # (el shadow buffer hace diff)
-            render_maze_estatico(frame, grid)
+            parpadeo = (int(now * 2) % 2 == 0)
+            render_maze_estatico(frame, grid, parpadeo)
             render_hud(frame, score, lives, level)
             render_footer(frame, mensaje if now < msg_expira else None)
             pintar_pacman(frame, pac["x"], pac["y"], (pac["dx"], pac["dy"]), frame_tick)
@@ -528,7 +534,8 @@ def jugar():
                 mover_fantasma(grid, g, (state["pacman"]["x"], state["pacman"]["y"]), asustado)
             # repintar tras mover fantasmas
             frame = frame_nuevo()
-            render_maze_estatico(frame, grid)
+            parpadeo = (int(now * 2) % 2 == 0)
+            render_maze_estatico(frame, grid, parpadeo)
             render_hud(frame, score, lives, level)
             render_footer(frame, mensaje if now < msg_expira else None)
             pintar_pacman(frame, state["pacman"]["x"], state["pacman"]["y"],
