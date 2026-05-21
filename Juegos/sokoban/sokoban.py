@@ -1860,3 +1860,450 @@ LEVELS = [
 #####       #### ####   ######
 """),
 ]
+
+
+def parse_level(grid_str):
+    """Devuelve dict con mapa (matriz de tiles base), boxes, targets, player."""
+    # Filtra lineas vacias y atribuciones tipo "'reduced (X)'" del set Musacchio:
+    # solo conservamos lineas que tengan algun caracter de juego.
+    valid_chars = set("#$.*@+ ")
+    lines = [l for l in grid_str.split("\n")
+             if l and any(ch in valid_chars and ch != ' ' for ch in l)]
+    # ajustar todas las filas a la misma longitud
+    maxw = max(len(l) for l in lines)
+    lines = [l + " " * (maxw - len(l)) for l in lines]
+    mapa = []
+    targets = set()
+    boxes = set()
+    player = None
+    for y, line in enumerate(lines):
+        row = []
+        for x, ch in enumerate(line):
+            if ch == "#":
+                row.append("#")
+            else:
+                row.append(" ")
+                if ch in (".", "*", "+"):
+                    targets.add((x, y))
+                if ch in ("$", "*"):
+                    boxes.add((x, y))
+                if ch in ("@", "+"):
+                    player = (x, y)
+        mapa.append(row)
+    if player is None:
+        raise ValueError("Nivel sin jugador")
+    return {"mapa": mapa, "targets": frozenset(targets), "boxes": boxes,
+            "player": player, "w": maxw, "h": len(lines)}
+
+
+# ---------- logica ----------
+
+DELTAS = {
+    "arr": (0, -1),
+    "abj": (0, 1),
+    "izq": (-1, 0),
+    "der": (1, 0),
+}
+
+
+def mover(state, direccion):
+    """Aplica movimiento. Devuelve True si fue valido (modifica state).
+    Antes de modificar, snapshotea (player, boxes_frozen) en state['undo']."""
+    dx, dy = DELTAS[direccion]
+    px, py = state["player"]
+    nx, ny = px + dx, py + dy
+    h = state["h"]; w = state["w"]
+    if not (0 <= nx < w and 0 <= ny < h):
+        return False
+    if state["mapa"][ny][nx] == "#":
+        return False
+    snapshot_boxes = frozenset(state["boxes"])
+    snapshot_player = state["player"]
+    if (nx, ny) in state["boxes"]:
+        bx, by = nx + dx, ny + dy
+        if not (0 <= bx < w and 0 <= by < h):
+            return False
+        if state["mapa"][by][bx] == "#":
+            return False
+        if (bx, by) in state["boxes"]:
+            return False
+        state["boxes"].remove((nx, ny))
+        state["boxes"].add((bx, by))
+    state["player"] = (nx, ny)
+    state.setdefault("undo", []).append((snapshot_player, snapshot_boxes))
+    state["movs"] = state.get("movs", 0) + 1
+    return True
+
+
+def deshacer(state):
+    if not state.get("undo"):
+        return False
+    player, boxes = state["undo"].pop()
+    state["player"] = player
+    state["boxes"] = set(boxes)
+    state["movs"] = max(0, state.get("movs", 0) - 1)
+    return True
+
+
+def ganado(state):
+    return state["boxes"] == set(state["targets"])
+
+
+# ---------- render ----------
+
+def render(state, nivel_idx, nivel_nombre, score_total, movs, msg=None):
+    frame = frame_nuevo()
+
+    # titulo
+    titulo = f" SOKOBAN BBS  -  Nivel {nivel_idx + 1}/{len(LEVELS)}: \"{nivel_nombre}\" "
+    if len(titulo) > COLS - 2:
+        titulo = titulo[:COLS - 5] + "... "
+    pad_l = (COLS - len(titulo)) // 2
+    set_text(frame, 0, 0, "═" * pad_l, "blancoB")
+    set_text(frame, 0, pad_l, titulo, "amarB", "bold")
+    set_text(frame, 0, pad_l + len(titulo), "═" * (COLS - pad_l - len(titulo)), "blancoB")
+
+    # mapa centrado
+    w = state["w"]
+    h = state["h"]
+    map_y0 = max(3, (ROWS - h) // 2 - 1)
+    map_x0 = max(2, (COLS - w) // 2)
+
+    mapa = state["mapa"]
+    boxes = state["boxes"]
+    targets = state["targets"]
+    px, py = state["player"]
+
+    for y in range(h):
+        for x in range(w):
+            cx, cy = map_x0 + x, map_y0 + y
+            base = mapa[y][x]
+            es_marca = (x, y) in targets
+            es_caja = (x, y) in boxes
+            es_jug = (x, y) == (px, py)
+            if base == "#":
+                set_cell(frame, cy, cx, "█", "azul")
+            elif es_jug:
+                if es_marca:
+                    set_cell(frame, cy, cx, "@", "cyanB", "bold")
+                else:
+                    set_cell(frame, cy, cx, "@", "cyanB", "bold")
+            elif es_caja:
+                if es_marca:
+                    set_cell(frame, cy, cx, "█", "verdeB", "bold")
+                else:
+                    set_cell(frame, cy, cx, "█", "amarB", "bold")
+            elif es_marca:
+                set_cell(frame, cy, cx, "·", "rojo")
+            # else: suelo (espacio en blanco, ya esta limpio)
+
+    # status
+    cajas_colocadas = sum(1 for b in boxes if b in targets)
+    total_cajas = len(boxes)
+    stats = f" Movs: {movs}   Cajas: {cajas_colocadas}/{total_cajas}   Score total: {score_total} "
+    set_text(frame, ROWS - 3, 0, "─" * COLS, "dim")
+    sx = (COLS - len(stats)) // 2
+    set_text(frame, ROWS - 2, 0, " " * COLS, "blanco")
+    set_text(frame, ROWS - 2, sx, stats, "blanco")
+    set_text(frame, ROWS - 2, sx + 7, str(movs), "amarB", "bold")
+    idx_caja = stats.index("Cajas:") + 7
+    set_text(frame, ROWS - 2, sx + idx_caja, f"{cajas_colocadas}/{total_cajas}",
+             "verdeB" if cajas_colocadas == total_cajas else "cyanB", "bold")
+    idx_score = stats.index("Score total:") + 13
+    set_text(frame, ROWS - 2, sx + idx_score, str(score_total), "verdeB", "bold")
+
+    set_text(frame, ROWS - 1, 0, "─" * COLS, "dim")
+    ctrl = " WASD mover    R reset    U undo    N saltar    Q salir "
+    set_text(frame, ROWS - 1, (COLS - len(ctrl)) // 2, ctrl, "dim")
+
+    if msg:
+        set_text(frame, map_y0 + h + 1, (COLS - len(msg)) // 2, msg, "amarB", "bold")
+
+    flush_frame(frame)
+
+
+
+# ---------- splash y final ----------
+
+LOGO_SOKOBAN = [
+    "███████╗ ██████╗ ██╗  ██╗ ██████╗ ██████╗  █████╗ ███╗   ██╗",
+    "██╔════╝██╔═══██╗██║ ██╔╝██╔═══██╗██╔══██╗██╔══██╗████╗  ██║",
+    "███████╗██║   ██║█████╔╝ ██║   ██║██████╔╝███████║██╔██╗ ██║",
+    "╚════██║██║   ██║██╔═██╗ ██║   ██║██╔══██╗██╔══██║██║╚██╗██║",
+    "███████║╚██████╔╝██║  ██╗╚██████╔╝██████╔╝██║  ██║██║ ╚████║",
+    "╚══════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝",
+]
+
+LOGO_BBS = [
+    "██████╗ ██████╗ ███████╗",
+    "██╔══██╗██╔══██╗██╔════╝",
+    "██████╔╝██████╔╝███████╗",
+    "██╔══██╗██╔══██╗╚════██║",
+    "██████╔╝██████╔╝███████║",
+    "╚═════╝ ╚═════╝ ╚══════╝",
+]
+
+
+def _caja_linea_splash(texto, ancho, color_txt, color_caja="verdeB"):
+    pad = ancho - len(texto)
+    pad_l = pad // 2
+    pad_r = pad - pad_l
+    cuerpo = " " * pad_l + c(texto, color_txt) + " " * pad_r if texto else " " * ancho
+    return c("║", color_caja) + cuerpo + c("║", color_caja)
+
+
+MANUAL_LINEAS = [
+    ('PREMISA', 'cyanB', 'bold'),
+    '  Clon de Sokoban. 10 niveles a mano de dificultad creciente.',
+    '  Empujas cajas hacia las marcas. No puedes tirar de las cajas.',
+    '',
+    ('CONTROLES (char-mode)', 'cyanB', 'bold'),
+    '  W A S D / flechas    mover',
+    '  U                    undo (deshacer ultimo movimiento)',
+    '  R                    reiniciar nivel',
+    '  N                    saltar al siguiente nivel',
+    '  Q                    salir',
+    '',
+    ('TILES', 'cyanB', 'bold'),
+    '  @ tu     # muro     . suelo     $ caja     o marca',
+    '  Caja sobre marca = caja iluminada.',
+    '',
+    ('PUNTUACION', 'cyanB', 'bold'),
+    '  Por nivel: 100 - movimientos (minimo 10).',
+    '  Total acumulado de todos los niveles completados.',
+    '  Top 10 persistente.',
+]
+
+
+def mostrar_manual():
+    cls()
+    print()
+    print(c("=" * 70, "cyanB"))
+    print(c("  MANUAL - SOKOBAN BBS".ljust(70), "cyanB", "bold"))
+    print(c("=" * 70, "cyanB"))
+    print()
+    for _ln in MANUAL_LINEAS:
+        if isinstance(_ln, tuple):
+            print(c(*_ln))
+        else:
+            print(_ln)
+    print()
+    print(c("-" * 70, "dim"))
+    try:
+        input(c("  Pulsa Enter para volver al menu...", "amarB"))
+    except EOFError:
+        pass
+
+
+def splash():
+    cls()
+    sys.stdout.write(show_cursor(True))
+    ancho = 70
+    print()
+    print(c("╔" + "═" * ancho + "╗", "verdeB"))
+    print(_caja_linea_splash("", ancho, "blanco"))
+    for ln in LOGO_SOKOBAN:
+        print(_caja_linea_splash(ln, ancho, "amarB"))
+    print(_caja_linea_splash("", ancho, "blanco"))
+    for ln in LOGO_BBS:
+        print(_caja_linea_splash(ln, ancho, "amarB"))
+    print(_caja_linea_splash("", ancho, "blanco"))
+    print(_caja_linea_splash("Empuja las cajas hasta las marcas", ancho, "cyanB"))
+    print(_caja_linea_splash("Solo empujar, nunca tirar. Pensar antes de empujar.", ancho, "blanco"))
+    print(_caja_linea_splash("", ancho, "blanco"))
+    print(c("╚" + "═" * ancho + "╝", "verdeB"))
+    msg = "[Enter] empezar     [M] manual"
+    print(" " * ((ancho + 2 - len(msg)) // 2) + c(msg, "amarB", "bold"))
+    try:
+        raw = input("")
+    except EOFError:
+        return
+    if raw.strip().lower() == "m":
+        mostrar_manual()
+
+
+def pantalla_final(score_total, niveles_resueltos, abandono):
+    sys.stdout.write(show_cursor(True))
+    print()
+    ancho = 50
+    margen = " " * ((COLS - (ancho + 2)) // 2)
+    linea = "═" * ancho
+    color_caja = "verdeB" if niveles_resueltos == len(LEVELS) else ("amarB" if niveles_resueltos > 0 else "rojoB")
+    lado = c("║", color_caja)
+
+    def fila_centrada(texto, *estilos):
+        pad_total = ancho - len(texto)
+        pad_l = pad_total // 2
+        pad_r = pad_total - pad_l
+        return margen + lado + " " * pad_l + c(texto, *estilos) + " " * pad_r + lado
+
+    def fila_kv(label, val, col):
+        prefijo = f"  {label}"
+        plano = prefijo + val
+        pad = ancho - len(plano)
+        return margen + lado + prefijo + c(val, col, "bold") + " " * pad + lado
+
+    print(margen + c("╔" + linea + "╗", color_caja))
+    if niveles_resueltos == len(LEVELS):
+        titulo = "¡HAS COMPLETADO TODOS LOS NIVELES!"
+    elif abandono:
+        titulo = "ABANDONASTE"
+    else:
+        titulo = "FIN DE PARTIDA"
+    print(fila_centrada(titulo, "bold"))
+    print(margen + c("╠" + linea + "╣", color_caja))
+    print(fila_kv("Niveles resueltos : ", f"{niveles_resueltos}/{len(LEVELS)}".rjust(18), "verdeB"))
+    print(fila_kv("Puntuacion total  : ", str(score_total).rjust(18), "amarB"))
+    print(margen + c("╚" + linea + "╝", color_caja))
+    print()
+
+    if bbs_scores.entra_en_top_local(score_total, max_top=MAX_TOP, ascending=ASCENDING):
+        print(margen + c("  [ENTRAS EN EL TOP 10]", "amarB", "bold"))
+        print()
+        nombre = ""
+        while not nombre:
+            try:
+                raw = input(margen + "  Iniciales (3 chars): ").strip().upper()
+            except EOFError:
+                raw = "AAA"
+            nombre = "".join(ch for ch in raw if ch.isalnum())[:3].ljust(3, "A")
+        bbs_scores.save_local(nombre, score_total, extra={"niveles": niveles_resueltos}, max_top=MAX_TOP, ascending=ASCENDING)
+        bbs_scores.submit(nombre, score_total, extra={"niveles": niveles_resueltos})
+        bbs_scores.invalidate_cache()
+        scores = [(e.handle, e.score, (e.extra.get("niveles", "?") if isinstance(e.extra, dict) else "?"), e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+    else:
+        scores = [(e.handle, e.score, (e.extra.get("niveles", "?") if isinstance(e.extra, dict) else "?"), e.date) for e in bbs_scores.top_local(limit=MAX_TOP, ascending=ASCENDING)]
+
+    print()
+    print(margen + c("  TOP 10".ljust(ancho), "bold"))
+    print(margen + c("─" * ancho, "dim"))
+    for i, (n, p, nv, fe) in enumerate(scores, 1):
+        color = "amarB" if p == score_total else "blanco"
+        print(margen + f"  {i:>2}. {c(n, color, 'bold')}  {c(str(p).rjust(6), color)}  Nv.{nv:<2}  {c(fe, 'dim')}")
+    print()
+    try:
+        input(margen + c("  Pulsa Enter para salir...", "dim"))
+    except EOFError:
+        pass
+
+
+# ---------- juego ----------
+
+def jugar_nivel(idx, score_total_actual):
+    """Devuelve (resuelto_bool, movs, abandono_bool, saltar_bool)."""
+    nombre, grid_str = LEVELS[idx]
+    state = parse_level(grid_str)
+    msg = None
+
+    cls()
+    while True:
+        render(state, idx, nombre, score_total_actual, state.get("movs", 0), msg)
+        msg = None
+        if ganado(state):
+            render(state, idx, nombre, score_total_actual, state.get("movs", 0),
+                   msg="¡Nivel completado!")
+            import time
+            time.sleep(1.0)
+            return True, state.get("movs", 0), False, False
+
+        tecla = leer_tecla()
+        if tecla in ("q", "Q", "\x03"):
+            return False, state.get("movs", 0), True, False
+        elif tecla in ("w", "W", "\x1b[A"):
+            if not mover(state, "arr"):
+                msg = "No se puede."
+        elif tecla in ("s", "S", "\x1b[B"):
+            if not mover(state, "abj"):
+                msg = "No se puede."
+        elif tecla in ("a", "A", "\x1b[D"):
+            if not mover(state, "izq"):
+                msg = "No se puede."
+        elif tecla in ("d", "D", "\x1b[C"):
+            if not mover(state, "der"):
+                msg = "No se puede."
+        elif tecla in ("r", "R"):
+            state = parse_level(grid_str)
+            msg = "Nivel reiniciado."
+        elif tecla in ("u", "U"):
+            if not deshacer(state):
+                msg = "No hay nada que deshacer."
+        elif tecla in ("n", "N"):
+            return False, state.get("movs", 0), False, True
+
+
+def jugar():
+    score_total = 0
+    niveles_resueltos = 0
+    cls()
+    sys.stdout.write(show_cursor(False))
+
+    for idx in range(len(LEVELS)):
+        resuelto, movs, abandono, saltar = jugar_nivel(idx, score_total)
+        if abandono:
+            return score_total, niveles_resueltos, True
+        if saltar:
+            continue
+        if resuelto:
+            niveles_resueltos += 1
+            bono = max(10, 100 - movs)
+            score_total += bono
+    return score_total, niveles_resueltos, False
+
+
+def main():
+    if not TERMIOS_OK:
+        print("Este terminal no soporta el modo requerido (termios).")
+        return
+    old = entrar_cbreak()
+    if old is None:
+        print("No se pudo entrar en modo cbreak. Sokoban necesita un TTY.")
+        return
+    try:
+        restaurar_terminal(old)
+        splash()
+        while True:
+            old2 = entrar_cbreak()
+            score, niveles, abandono = jugar()
+            restaurar_terminal(old2)
+            sys.stdout.write(show_cursor(True))
+            sys.stdout.flush()
+            pantalla_final(score, niveles, abandono)
+            # Toggle [L]ocal / [G]lobal del top mundial
+            while True:
+                try:
+                    _r = input(c("\n  [L] local   [G] global   [Enter] continuar: ", "dim")).strip().upper()
+                except EOFError:
+                    break
+                if _r not in ("L", "G"):
+                    break
+                _modo = "local" if _r == "L" else "global"
+                cls()  # toggle redibuja limpio
+                print()
+                _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(_modo, limit=MAX_TOP, ascending=ASCENDING)
+                print()
+                print(c("  " + _titulo.strip(), "cyanB", "bold"))
+                print(c("  " + "-" * 50, "dim"))
+                for _i, _e in enumerate(_scores_e, 1):
+                    _et = _e.display_handle if _modo == "global" else _e.handle
+                    print(f"  {_i:>2}. {_et:14}  {str(_e.score).rjust(8)}  {_e.date}")
+                print()
+
+            try:
+                raw = input("\n  Otra partida? [S/N]: ").strip().upper()
+            except EOFError:
+                raw = "N"
+            if not raw.startswith("S"):
+                break
+    except KeyboardInterrupt:
+        pass
+    finally:
+        try:
+            restaurar_terminal(old)
+        except Exception:
+            pass
+        sys.stdout.write(show_cursor(True))
+        sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()
