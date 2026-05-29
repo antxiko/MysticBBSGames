@@ -8,7 +8,8 @@ Clon de Sokoban (Hiroyuki Imabayashi, 1981) en modo texto para Mystic BBS. Empuj
 - Char-mode con `termios`.
 - Shadow buffer para diff-rendering.
 - Top 10 en `sokoban_scores.txt` (por niveles superados + movimientos).
-- 154 niveles del set publico de Nicolas Musacchio (MIT licensed), de dificultad creciente.
+- 150 niveles del set publico de Nicolas Musacchio (MIT licensed), de dificultad creciente.
+  (Set original de 154; se retiraron 4 de >=16 cajas no verificables por el solver.)
   Fuente: https://github.com/nMusacchio/sokoban
 
 ## Mecanica

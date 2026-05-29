@@ -91,7 +91,7 @@ python3 Juegos/puyopuyo/puyopuyo.py
 
 ### [Juegos/sokoban/](Juegos/sokoban/) - Sokoban BBS
 
-Clon de Sokoban. 154 niveles del set publico de [Nicolas Musacchio](https://github.com/nMusacchio/sokoban) (MIT) de dificultad creciente. Empujas cajas a sus marcas (nunca tirar). Undo ilimitado, reset y saltar nivel. Puntuacion = 100 por nivel - movimientos (minimo 10).
+Clon de Sokoban. 150 niveles del set publico de [Nicolas Musacchio](https://github.com/nMusacchio/sokoban) (MIT) de dificultad creciente, todos verificados como resolubles. Empujas cajas a sus marcas (nunca tirar). Undo ilimitado, reset y saltar nivel. Puntuacion = 100 por nivel - movimientos (minimo 10).
 
 ```
 python3 Juegos/sokoban/sokoban.py
@@ -258,8 +258,9 @@ de los juegos, las ideas para mejorarlos y la base del servicio de
 puntuaciones globales compartidas entre BBSes.
 
 Gracias a **[Nicolas Musacchio](https://github.com/nMusacchio/sokoban)** por
-el set de 154 niveles de Sokoban (MIT), que sustituyen los niveles hechos a
-mano de las versiones iniciales del juego.
+el set de niveles de Sokoban (MIT), que sustituyen los niveles hechos a
+mano de las versiones iniciales del juego (usamos 150 de los 154, todos
+verificados como resolubles).
 
 ## Licencia
 
