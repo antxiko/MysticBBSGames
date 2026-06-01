@@ -1096,9 +1096,10 @@ def main():
             print()
             _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
             print(c(f"  {_titulo.strip()} (menos turnos = mejor):", "cyanB", "bold"))
+            _handle_w = max(14, max((len(_e.display_handle if modo == "global" else _e.handle) for _e in _scores_e), default=14))
             for _i, _e in enumerate(_scores_e, 1):
                 _et = _e.display_handle if modo == "global" else _e.handle
-                print(c(f"  {_i:>2}. {_et:<14}  {_e.score:>4} turnos   {_e.date}", "blanco"))
+                print(c(f"  {_i:>2}. {_et:<{_handle_w}}  {_e.score:>4} turnos   {_e.date}", "blanco"))
             try:
                 _r = input(c("\n  [L] local   [G] global   [Enter] continuar: ", "dim")).strip().upper()
             except EOFError:

@@ -652,9 +652,10 @@ def main():
                 print()
                 print(c("  " + _titulo.strip(), "cyanB", "bold"))
                 print(c("  " + "-" * 50, "dim"))
+                _handle_w = max(14, max((len(_e.display_handle if _modo == "global" else _e.handle) for _e in _scores_e), default=14))
                 for _i, _e in enumerate(_scores_e, 1):
                     _et = _e.display_handle if _modo == "global" else _e.handle
-                    print(f"  {_i:>2}. {_et:14}  {str(_e.score).rjust(8)}  {_e.date}")
+                    print(f"  {_i:>2}. {_et:{_handle_w}}  {str(_e.score).rjust(8)}  {_e.date}")
                 print()
 
             try:

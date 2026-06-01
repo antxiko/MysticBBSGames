@@ -395,14 +395,19 @@ def render(state, msg=None):
 
     # HUD
     hud_y = FRAME_BOTTOM + 1
-    info = f" Score: {state['score']}    Vidas: {state['vidas']}    Nivel: {state['nivel']}"
-    set_text(frame, hud_y, 1, info, "blanco")
-    sxoff = info.index("Score:") + 7
-    set_text(frame, hud_y, sxoff, str(state['score']), "verdeB", "bold")
-    sxoff = info.index("Vidas:") + 7
-    set_text(frame, hud_y, sxoff, str(state['vidas']), "rojoB", "bold")
-    sxoff = info.index("Nivel:") + 7
-    set_text(frame, hud_y, sxoff, str(state['nivel']), "amarB", "bold")
+    # Limpia la linea entera para que cuando cambien las longitudes
+    # (score 99->100) no queden residuos a la derecha.
+    set_text(frame, hud_y, 0, " " * COLS)
+    x = 1
+    s_score = str(state['score'])
+    s_vidas = str(state['vidas'])
+    s_nivel = str(state['nivel'])
+    set_text(frame, hud_y, x, " Score: ", "blanco"); x += len(" Score: ")
+    set_text(frame, hud_y, x, s_score, "verdeB", "bold"); x += len(s_score)
+    set_text(frame, hud_y, x, "    Vidas: ", "blanco"); x += len("    Vidas: ")
+    set_text(frame, hud_y, x, s_vidas, "rojoB", "bold"); x += len(s_vidas)
+    set_text(frame, hud_y, x, "    Nivel: ", "blanco"); x += len("    Nivel: ")
+    set_text(frame, hud_y, x, s_nivel, "amarB", "bold")
 
     # mensaje
     if msg:
@@ -668,9 +673,10 @@ def main():
                 print()
                 print(c("  " + _titulo.strip(), "cyanB", "bold"))
                 print(c("  " + "-" * 50, "dim"))
+                _handle_w = max(14, max((len(_e.display_handle if _modo == "global" else _e.handle) for _e in _scores_e), default=14))
                 for _i, _e in enumerate(_scores_e, 1):
                     _et = _e.display_handle if _modo == "global" else _e.handle
-                    print(f"  {_i:>2}. {_et:14}  {str(_e.score).rjust(8)}  {_e.date}")
+                    print(f"  {_i:>2}. {_et:{_handle_w}}  {str(_e.score).rjust(8)}  {_e.date}")
                 print()
 
             try:

@@ -428,6 +428,9 @@ def _pintar_top(scores, score, nombre_guardado, ancho, margen, lado, modo_label,
     """Pinta la cabecera de la tabla + las 10 filas. scores es list[ScoreEntry]."""
     print(margen + lado + c(modo_label.center(ancho), modo_color, "bold") + lado)
     cfg = bbs_scores.get_config()
+    _es_global_hdr = (modo_label.strip().upper().startswith("TOP GLOBAL"))
+    _handle_w = max(14, max((len(e.display_handle if _es_global_hdr else e.handle)
+                             for e in scores), default=14))
     for i in range(MAX_TOP):
         if i < len(scores):
             e = scores[i]
@@ -438,7 +441,7 @@ def _pintar_top(scores, score, nombre_guardado, ancho, margen, lado, modo_label,
             # En global muestra handle@BBS; en local solo handle.
             es_global = (modo_label.strip().upper().startswith("TOP GLOBAL"))
             etiqueta = e.display_handle if es_global else e.handle
-            ln_txt = f"  {i + 1:>2}. {etiqueta:<14} {e.score:>6} pts   {e.date}"
+            ln_txt = f"  {i + 1:>2}. {etiqueta:<{_handle_w}} {e.score:>6} pts   {e.date}"
             print(margen + lado + c(ln_txt.ljust(ancho), *estilo) + lado)
         else:
             print(margen + lado + " " * ancho + lado)

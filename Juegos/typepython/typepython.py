@@ -403,10 +403,11 @@ def pantalla_final(puntos, nivel, aciertos):
         _scores_e, _titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
         print(margen + c(f" {_titulo.strip()}".ljust(ancho), "bold"))
         print(margen + c("\u2500" * ancho, "dim"))
+        _handle_w = max(14, max((len(_e.display_handle if modo == "global" else _e.handle) for _e in _scores_e), default=14))
         for _i, _e in enumerate(_scores_e, 1):
             _et = _e.display_handle if modo == "global" else _e.handle
             color = "amarB" if _e.score == puntos else "blanco"
-            print(margen + f"  {_i:>2}. {c(_et.ljust(14), color, 'bold')} {c(str(_e.score).rjust(8), color)}  {c(_e.date, 'dim')}")
+            print(margen + f"  {_i:>2}. {c(_et.ljust(_handle_w), color, 'bold')} {c(str(_e.score).rjust(8), color)}  {c(_e.date, 'dim')}")
         print()
         try:
             _r = input(margen + c("  [L] local   [G] global   [Enter] continuar: ", "dim")).strip().upper()

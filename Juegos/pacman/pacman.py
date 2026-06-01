@@ -782,10 +782,11 @@ def pantalla_final(score, level):
         scores_e, titulo, _ = bbs_scores.get_top_for_mode(modo, limit=MAX_TOP, ascending=ASCENDING)
         print(margen + c(f" {titulo.strip()}".ljust(ancho), "bold"))
         print(margen + c("─" * ancho, "dim"))
+        _handle_w = max(14, max((len(e.display_handle if modo == "global" else e.handle) for e in scores_e), default=14))
         for i, e in enumerate(scores_e, 1):
             etiqueta = e.display_handle if modo == "global" else e.handle
             color = "amarB" if e.score == score else "blanco"
-            print(margen + f"  {i:>2}. {c(etiqueta.ljust(14), color, 'bold')} {c(str(e.score).rjust(8), color)}  {c(e.date, 'dim')}")
+            print(margen + f"  {i:>2}. {c(etiqueta.ljust(_handle_w), color, 'bold')} {c(str(e.score).rjust(8), color)}  {c(e.date, 'dim')}")
         print()
         try:
             raw = input(margen + c("  [L] local   [G] global   [Enter] continuar: ", "dim")).strip().upper()
